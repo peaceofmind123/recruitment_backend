@@ -1,8 +1,9 @@
-import { Injectable, ConflictException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, ConflictException, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, QueryFailedError } from 'typeorm';
+import { Repository } from 'typeorm';
 import { FiscalYear } from './entities/fiscal-year.entity';
 import { CreateFiscalYearDto } from './dto/create-fiscal-year.dto';
+import { BusinessException } from '../common/exceptions/business.exception';
 
 @Injectable()
 export class FiscalYearService {
@@ -16,13 +17,13 @@ export class FiscalYearService {
             const fiscalYear = this.fiscalYearRepository.create(createFiscalYearDto);
             return await this.fiscalYearRepository.save(fiscalYear);
         } catch (error) {
-            if (error instanceof QueryFailedError) {
-                // Check if it's a unique constraint violation
-                if (error.message.includes('duplicate key value violates unique constraint')) {
-                    throw new ConflictException(`Fiscal year ${createFiscalYearDto.year} already exists`);
-                }
+            if (error.message?.includes('duplicate key value violates unique constraint')) {
+                throw new BusinessException(
+                    `Fiscal year ${createFiscalYearDto.year} already exists`,
+                    HttpStatus.CONFLICT,
+                );
             }
-            throw new InternalServerErrorException('Failed to create fiscal year');
+            throw error; // Let the global filter handle other errors
         }
     }
 } 

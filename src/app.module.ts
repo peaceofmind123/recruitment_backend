@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { FiscalYearModule } from './fiscal-year/fiscal-year.module';
 import { VacancyModule } from './vacancy/vacancy.module';
+import { CommonModule } from './common/common.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { VacancyModule } from './vacancy/vacancy.module';
       }),
       inject: [ConfigService],
     }),
+    CommonModule,
     FiscalYearModule,
     VacancyModule,
   ],

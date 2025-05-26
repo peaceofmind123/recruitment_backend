@@ -65,19 +65,21 @@ export class LoggerMiddleware implements NestMiddleware {
 
         // Capture response
         const originalSend = res.send;
+        const self = this; // Store reference to this
+
         res.send = function (body: any) {
             const responseTime = Date.now() - startTime;
 
-            if (this.isDebug) {
-                const responseBody = this.getResponseBody(body);
-                this.logger.debug(
+            if (self.isDebug) {
+                const responseBody = self.getResponseBody(body);
+                self.logger.debug(
                     `Outgoing Response: ${method} ${originalUrl} - ${res.statusCode} - ${responseTime}ms`,
                     `\nBody: ${responseBody}`,
                 );
             }
 
             return originalSend.call(this, body);
-        }.bind(this);
+        };
 
         next();
     }

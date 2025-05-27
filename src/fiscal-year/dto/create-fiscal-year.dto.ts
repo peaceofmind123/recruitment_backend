@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsDate, IsOptional, Matches } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class CreateFiscalYearDto {
     @ApiProperty({
@@ -16,6 +17,7 @@ export class CreateFiscalYearDto {
         description: 'Start date of the fiscal year',
         example: '2024-04-14'
     })
+    @Transform(({ value }) => new Date(value))
     @IsDate()
     startedOn: Date;
 
@@ -25,6 +27,7 @@ export class CreateFiscalYearDto {
         required: false
     })
     @IsOptional()
+    @Transform(({ value }) => value ? new Date(value) : undefined)
     @IsDate()
     closedOn?: Date;
 } 

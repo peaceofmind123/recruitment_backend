@@ -15,18 +15,21 @@ export class FiscalYearService {
     ) { }
 
     async create(createFiscalYearDto: CreateFiscalYearDto): Promise<FiscalYear> {
-        try {
-            const fiscalYear = this.fiscalYearRepository.create(createFiscalYearDto);
-            return await this.fiscalYearRepository.save(fiscalYear);
-        } catch (error) {
-            if (error.message?.includes('duplicate key value violates unique constraint')) {
-                throw new BusinessException(
-                    `Fiscal year ${createFiscalYearDto.year} already exists`,
-                    HttpStatus.CONFLICT,
-                );
-            }
-            throw error; // Let the global filter handle other errors
+        // Check if fiscal year already exists
+        const existingFiscalYear = await this.fiscalYearRepository.findOne({
+            where: { year: createFiscalYearDto.year }
+        });
+
+        if (existingFiscalYear) {
+            throw new BusinessException(
+                `Fiscal year ${createFiscalYearDto.year} already exists`,
+                HttpStatus.CONFLICT,
+            );
         }
+
+        // Create new fiscal year
+        const fiscalYear = this.fiscalYearRepository.create(createFiscalYearDto);
+        return await this.fiscalYearRepository.save(fiscalYear);
     }
 
     async findAll(query: GetFiscalYearsDto): Promise<PaginatedResponseDto<FiscalYear>> {

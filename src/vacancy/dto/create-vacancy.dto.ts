@@ -2,6 +2,15 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsInt, Min, Max, Matches } from 'class-validator';
 
 export class CreateVacancyDto {
+    @ApiProperty({ description: 'Bigyapan number (unique identifier)' })
+    @IsString()
+    bigyapanNo: string;
+
+    @ApiProperty({ description: 'Number of positions available' })
+    @IsInt()
+    @Min(1)
+    numPositions: number;
+
     @ApiProperty({ description: 'Level of the position (1-12)' })
     @IsInt()
     @Min(1)

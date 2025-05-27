@@ -1,13 +1,20 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, PrimaryColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsInt, Min, Max, IsUUID, Matches } from 'class-validator';
+import { IsString, IsInt, Min, Max, Matches } from 'class-validator';
 import { FiscalYear } from '../../fiscal-year/entities/fiscal-year.entity';
 
 @Entity()
 export class Vacancy {
-    @ApiProperty({ description: 'Unique identifier' })
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+    @ApiProperty({ description: 'Bigyapan number (unique identifier)' })
+    @PrimaryColumn()
+    @IsString()
+    bigyapanNo: string;
+
+    @ApiProperty({ description: 'Number of positions available' })
+    @IsInt()
+    @Min(1)
+    @Column()
+    numPositions: number;
 
     @ApiProperty({ description: 'Level of the position (1-12)' })
     @IsInt()

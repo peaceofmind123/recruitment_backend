@@ -1,6 +1,6 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsInt, Min, Max, IsUUID } from 'class-validator';
+import { IsString, IsInt, Min, Max, IsUUID, Matches } from 'class-validator';
 import { FiscalYear } from '../../fiscal-year/entities/fiscal-year.entity';
 
 @Entity()
@@ -37,8 +37,14 @@ export class Vacancy {
     position: string;
 
     @ApiProperty({ description: 'Associated fiscal year', type: () => FiscalYear })
-    @IsUUID()
+    @IsString()
+    @Matches(/^\d{4}\/\d{2}$/, {
+        message: 'Year must be in YYYY/YY format (e.g., "2081/82")'
+    })
     @ManyToOne(() => FiscalYear, fiscalYear => fiscalYear.vacancies)
-    @JoinColumn()
+    @JoinColumn({ name: 'fiscalYearYear' })
     fiscalYear: FiscalYear;
+
+    @Column()
+    fiscalYearYear: string;
 } 

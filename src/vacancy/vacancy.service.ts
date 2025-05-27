@@ -16,11 +16,11 @@ export class VacancyService {
 
     async create(createVacancyDto: CreateVacancyDto): Promise<Vacancy> {
         const fiscalYear = await this.fiscalYearRepository.findOne({
-            where: { id: createVacancyDto.fiscalYearId }
+            where: { year: createVacancyDto.fiscalYearYear }
         });
 
         if (!fiscalYear) {
-            throw new NotFoundException(`Fiscal year with ID ${createVacancyDto.fiscalYearId} not found`);
+            throw new NotFoundException(`Fiscal year ${createVacancyDto.fiscalYearYear} not found`);
         }
 
         const vacancy = this.vacancyRepository.create({

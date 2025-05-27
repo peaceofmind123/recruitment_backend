@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsInt, Min, Max, IsUUID } from 'class-validator';
+import { IsString, IsInt, Min, Max, Matches } from 'class-validator';
 
 export class CreateVacancyDto {
     @ApiProperty({ description: 'Level of the position (1-12)' })
@@ -24,7 +24,10 @@ export class CreateVacancyDto {
     @IsString()
     position: string;
 
-    @ApiProperty({ description: 'Associated fiscal year ID' })
-    @IsUUID()
-    fiscalYearId: string;
+    @ApiProperty({ description: 'Associated fiscal year (e.g., "2081/82")' })
+    @IsString()
+    @Matches(/^\d{4}\/\d{2}$/, {
+        message: 'Year must be in YYYY/YY format (e.g., "2081/82")'
+    })
+    fiscalYearYear: string;
 } 

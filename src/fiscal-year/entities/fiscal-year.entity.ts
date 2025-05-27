@@ -1,21 +1,16 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToMany, Unique } from 'typeorm';
+import { Entity, Column, PrimaryColumn, OneToMany } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsDate, IsOptional, Matches } from 'class-validator';
 import { Vacancy } from '../../vacancy/entities/vacancy.entity';
 
 @Entity()
-@Unique(['year'])
 export class FiscalYear {
-    @ApiProperty({ description: 'Unique identifier' })
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
-
     @ApiProperty({ description: 'Fiscal year (e.g., "2081/82")' })
     @IsString()
     @Matches(/^\d{4}\/\d{2}$/, {
         message: 'Year must be in YYYY/YY format (e.g., "2081/82")'
     })
-    @Column({ unique: true })
+    @PrimaryColumn()
     year: string;
 
     @ApiProperty({ description: 'Start date of the fiscal year' })

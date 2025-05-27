@@ -1,7 +1,8 @@
-import { Controller, Post, Get, Body, Query } from '@nestjs/common';
+import { Controller, Post, Get, Put, Body, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { VacancyService } from './vacancy.service';
 import { CreateVacancyDto } from './dto/create-vacancy.dto';
+import { UpdateVacancyDto } from './dto/update-vacancy.dto';
 import { Vacancy } from './entities/vacancy.entity';
 
 @ApiTags('vacancies')
@@ -30,5 +31,24 @@ export class VacancyController {
     @ApiResponse({ status: 404, description: 'Fiscal year not found.' })
     findByFiscalYear(@Query('fiscalYearYear') fiscalYearYear: string): Promise<Vacancy[]> {
         return this.vacancyService.findByFiscalYear(fiscalYearYear);
+    }
+
+    @Put()
+    @ApiOperation({ summary: 'Update a vacancy' })
+    @ApiQuery({
+        name: 'oldBigyapanNo',
+        required: true,
+        description: 'Current bigyapan number of the vacancy to update',
+        type: String
+    })
+    @ApiResponse({ status: 200, description: 'The vacancy has been successfully updated.', type: Vacancy })
+    @ApiResponse({ status: 400, description: 'Invalid input data.' })
+    @ApiResponse({ status: 404, description: 'Vacancy not found.' })
+    @ApiResponse({ status: 409, description: 'New bigyapan number already exists.' })
+    update(
+        @Query('oldBigyapanNo') oldBigyapanNo: string,
+        @Body() updateVacancyDto: UpdateVacancyDto
+    ): Promise<Vacancy> {
+        return this.vacancyService.update(oldBigyapanNo, updateVacancyDto);
     }
 } 

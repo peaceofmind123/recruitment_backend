@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Vacancy } from './entities/vacancy.entity';
 import { CreateVacancyDto } from './dto/create-vacancy.dto';
+import { UpdateVacancyDto } from './dto/update-vacancy.dto';
 import { FiscalYear } from '../fiscal-year/entities/fiscal-year.entity';
 
 @Injectable()
@@ -44,5 +45,32 @@ export class VacancyService {
             where: { fiscalYearYear },
             relations: ['fiscalYear']
         });
+    }
+
+    async update(oldBigyapanNo: string, updateVacancyDto: UpdateVacancyDto): Promise<Vacancy> {
+        const vacancy = await this.vacancyRepository.findOne({
+            where: { bigyapanNo: oldBigyapanNo },
+            relations: ['fiscalYear']
+        });
+
+        if (!vacancy) {
+            throw new NotFoundException(`Vacancy with bigyapan number ${oldBigyapanNo} not found`);
+        }
+
+        // If trying to update to a new bigyapanNo, check if it already exists
+        if (updateVacancyDto.bigyapanNo && updateVacancyDto.bigyapanNo !== oldBigyapanNo) {
+            const existingVacancy = await this.vacancyRepository.findOne({
+                where: { bigyapanNo: updateVacancyDto.bigyapanNo }
+            });
+
+            if (existingVacancy) {
+                throw new ConflictException(`Vacancy with bigyapan number ${updateVacancyDto.bigyapanNo} already exists`);
+            }
+        }
+
+        // Update all fields
+        Object.assign(vacancy, updateVacancyDto);
+
+        return this.vacancyRepository.save(vacancy);
     }
 } 

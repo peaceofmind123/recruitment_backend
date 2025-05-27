@@ -73,4 +73,16 @@ export class VacancyService {
 
         return this.vacancyRepository.save(vacancy);
     }
+
+    async delete(bigyapanNo: string): Promise<void> {
+        const vacancy = await this.vacancyRepository.findOne({
+            where: { bigyapanNo }
+        });
+
+        if (!vacancy) {
+            throw new NotFoundException(`Vacancy with bigyapan number ${bigyapanNo} not found`);
+        }
+
+        await this.vacancyRepository.remove(vacancy);
+    }
 } 

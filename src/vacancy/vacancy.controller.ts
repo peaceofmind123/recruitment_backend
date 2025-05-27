@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Put, Body, Query } from '@nestjs/common';
+import { Controller, Post, Get, Put, Delete, Body, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { VacancyService } from './vacancy.service';
 import { CreateVacancyDto } from './dto/create-vacancy.dto';
@@ -50,5 +50,19 @@ export class VacancyController {
         @Body() updateVacancyDto: UpdateVacancyDto
     ): Promise<Vacancy> {
         return this.vacancyService.update(oldBigyapanNo, updateVacancyDto);
+    }
+
+    @Delete()
+    @ApiOperation({ summary: 'Delete a vacancy' })
+    @ApiQuery({
+        name: 'bigyapanNo',
+        required: true,
+        description: 'Bigyapan number of the vacancy to delete',
+        type: String
+    })
+    @ApiResponse({ status: 200, description: 'The vacancy has been successfully deleted.' })
+    @ApiResponse({ status: 404, description: 'Vacancy not found.' })
+    delete(@Query('bigyapanNo') bigyapanNo: string): Promise<void> {
+        return this.vacancyService.delete(bigyapanNo);
     }
 } 

@@ -30,4 +30,19 @@ export class VacancyService {
 
         return this.vacancyRepository.save(vacancy);
     }
+
+    async findByFiscalYear(fiscalYearYear: string): Promise<Vacancy[]> {
+        const fiscalYear = await this.fiscalYearRepository.findOne({
+            where: { year: fiscalYearYear }
+        });
+
+        if (!fiscalYear) {
+            throw new NotFoundException(`Fiscal year ${fiscalYearYear} not found`);
+        }
+
+        return this.vacancyRepository.find({
+            where: { fiscalYearYear },
+            relations: ['fiscalYear']
+        });
+    }
 } 

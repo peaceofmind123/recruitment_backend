@@ -1,5 +1,5 @@
-import { Controller, Post, Body } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Post, Get, Body, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { VacancyService } from './vacancy.service';
 import { CreateVacancyDto } from './dto/create-vacancy.dto';
 import { Vacancy } from './entities/vacancy.entity';
@@ -16,5 +16,19 @@ export class VacancyController {
     @ApiResponse({ status: 404, description: 'Fiscal year not found.' })
     create(@Body() createVacancyDto: CreateVacancyDto): Promise<Vacancy> {
         return this.vacancyService.create(createVacancyDto);
+    }
+
+    @Get()
+    @ApiOperation({ summary: 'Get vacancies by fiscal year' })
+    @ApiQuery({
+        name: 'fiscalYearYear',
+        required: true,
+        description: 'Fiscal year in YYYY/YY format (e.g., "2081/82")',
+        type: String
+    })
+    @ApiResponse({ status: 200, description: 'Returns list of vacancies for the specified fiscal year.', type: [Vacancy] })
+    @ApiResponse({ status: 404, description: 'Fiscal year not found.' })
+    findByFiscalYear(@Query('fiscalYearYear') fiscalYearYear: string): Promise<Vacancy[]> {
+        return this.vacancyService.findByFiscalYear(fiscalYearYear);
     }
 } 

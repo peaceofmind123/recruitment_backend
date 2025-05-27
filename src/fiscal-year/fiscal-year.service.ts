@@ -46,9 +46,12 @@ export class FiscalYearService {
             where.closedOn = Not(IsNull());
         }
 
-        // Execute query with pagination
+        // Execute query with pagination and relations
         const [items, total] = await this.fiscalYearRepository.findAndCount({
             where,
+            relations: {
+                vacancies: true
+            },
             order: { [sortBy]: sortOrder },
             skip: (page - 1) * limit,
             take: limit,

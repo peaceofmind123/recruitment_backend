@@ -1,9 +1,11 @@
-import { Controller, Post, Get, Put, Delete, Body, Query, Res } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { Controller, Post, Get, Put, Delete, Body, Query, Res, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiConsumes } from '@nestjs/swagger';
 import { Response } from 'express';
 import { VacancyService } from './vacancy.service';
 import { CreateVacancyDto } from './dto/create-vacancy.dto';
 import { UpdateVacancyDto } from './dto/update-vacancy.dto';
+import { UploadApprovedApplicantListDto } from './dto/upload-approved-applicant-list.dto';
 import { Vacancy } from './entities/vacancy.entity';
 
 @ApiTags('vacancies')
@@ -74,5 +76,29 @@ export class VacancyController {
     async downloadApplicantListFormat(@Res() res: Response): Promise<void> {
         const { filePath, fileName } = await this.vacancyService.getApplicantListFormat();
         res.download(filePath, fileName);
+    }
+
+    @Post('approved-applicant-list')
+    @ApiOperation({ summary: 'Upload approved applicant list for a vacancy' })
+    @ApiConsumes('multipart/form-data')
+    @ApiResponse({ status: 201, description: 'The approved applicant list has been successfully uploaded.', type: Vacancy })
+    @ApiResponse({ status: 400, description: 'Invalid input data or file already exists.' })
+    @ApiResponse({ status: 404, description: 'Vacancy not found.' })
+    @UseInterceptors(FileInterceptor('file', {
+        fileFilter: (req, file, callback) => {
+            if (!file.originalname.match(/\.(xlsx|xls)$/)) {
+                return callback(new Error('Only Excel files are allowed!'), false);
+            }
+            callback(null, true);
+        }
+    }))
+    async uploadApprovedApplicantList(
+        @Body() uploadDto: UploadApprovedApplicantListDto,
+        @UploadedFile() file: Express.Multer.File
+    ): Promise<Vacancy> {
+        if (!file) {
+            throw new BadRequestException('No file uploaded');
+        }
+        return this.vacancyService.uploadApprovedApplicantList(uploadDto.bigyapanNo, file);
     }
 } 

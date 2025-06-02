@@ -1,8 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { join } from 'path';
-import { existsSync } from 'fs';
+import { mkdir, writeFile, access, constants } from 'fs/promises';
 import { Vacancy } from './entities/vacancy.entity';
 import { CreateVacancyDto } from './dto/create-vacancy.dto';
 import { UpdateVacancyDto } from './dto/update-vacancy.dto';
@@ -92,10 +92,46 @@ export class VacancyService {
         const fileName = 'applicant-list-format.xlsx';
         const filePath = join(process.cwd(), 'src', 'assets', fileName);
 
-        if (!existsSync(filePath)) {
+        try {
+            await access(filePath, constants.F_OK);
+        } catch {
             throw new NotFoundException('Applicant list format file not found');
         }
 
         return { filePath, fileName };
+    }
+
+    async uploadApprovedApplicantList(bigyapanNo: string, file: Express.Multer.File): Promise<Vacancy> {
+        const vacancy = await this.vacancyRepository.findOne({
+            where: { bigyapanNo },
+            relations: ['fiscalYear']
+        });
+
+        if (!vacancy) {
+            throw new NotFoundException(`Vacancy with bigyapan number ${bigyapanNo} not found`);
+        }
+
+        if (vacancy.approvedApplicantList) {
+            throw new BadRequestException('Approved applicant list already exists for this vacancy');
+        }
+
+        // Create directory if it doesn't exist
+        const uploadDir = join(process.cwd(), 'src', 'assets', 'approved-applicants', bigyapanNo);
+        try {
+            await mkdir(uploadDir, { recursive: true });
+        } catch (error) {
+            // Ignore error if directory already exists
+            if (error.code !== 'EEXIST') {
+                throw error;
+            }
+        }
+
+        // Save the file
+        const filePath = join(uploadDir, 'approved-applicant-list.xlsx');
+        await writeFile(filePath, file.buffer);
+
+        // Update vacancy with file path
+        vacancy.approvedApplicantList = filePath;
+        return this.vacancyRepository.save(vacancy);
     }
 } 

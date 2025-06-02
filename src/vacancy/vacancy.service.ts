@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, ConflictException, BadRequestException }
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { join } from 'path';
-import { mkdir, writeFile, access, constants } from 'fs/promises';
+import { mkdir, writeFile, access, constants, rm } from 'fs/promises';
 import { Vacancy } from './entities/vacancy.entity';
 import { CreateVacancyDto } from './dto/create-vacancy.dto';
 import { UpdateVacancyDto } from './dto/update-vacancy.dto';
@@ -85,6 +85,17 @@ export class VacancyService {
             throw new NotFoundException(`Vacancy with bigyapan number ${bigyapanNo} not found`);
         }
 
+        // If there's an approved applicant list, try to delete it first
+        if (vacancy.approvedApplicantList) {
+            const uploadDir = join(process.cwd(), 'src', 'assets', 'approved-applicants', `${bigyapanNo.split("/")[0]}-${bigyapanNo.split("/")[1]}`);
+            try {
+                await rm(uploadDir, { recursive: true, force: true });
+            } catch (error) {
+                throw new BadRequestException(`Failed to delete approved applicant list directory for vacancy ${bigyapanNo}: ${error.message}`);
+            }
+        }
+
+        // Only delete from database if file system cleanup was successful
         await this.vacancyRepository.remove(vacancy);
     }
 

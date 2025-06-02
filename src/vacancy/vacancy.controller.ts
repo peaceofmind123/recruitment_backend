@@ -101,4 +101,22 @@ export class VacancyController {
         }
         return this.vacancyService.uploadApprovedApplicantList(uploadDto.bigyapanNo, file);
     }
+
+    @Get('approved-applicant-list')
+    @ApiOperation({ summary: 'Download approved applicant list for a vacancy' })
+    @ApiQuery({
+        name: 'bigyapanNo',
+        required: true,
+        description: 'Bigyapan number of the vacancy',
+        type: String
+    })
+    @ApiResponse({ status: 200, description: 'Returns the approved applicant list Excel file.' })
+    @ApiResponse({ status: 404, description: 'Vacancy or approved applicant list not found.' })
+    async downloadApprovedApplicantList(
+        @Query('bigyapanNo') bigyapanNo: string,
+        @Res() res: Response
+    ): Promise<void> {
+        const { filePath, fileName } = await this.vacancyService.getApprovedApplicantList(bigyapanNo);
+        res.download(filePath, fileName);
+    }
 } 

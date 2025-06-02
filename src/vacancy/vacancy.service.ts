@@ -145,4 +145,32 @@ export class VacancyService {
         vacancy.approvedApplicantList = filePath;
         return this.vacancyRepository.save(vacancy);
     }
+
+    async getApprovedApplicantList(bigyapanNo: string): Promise<{ filePath: string; fileName: string }> {
+        const vacancy = await this.vacancyRepository.findOne({
+            where: { bigyapanNo }
+        });
+
+        if (!vacancy) {
+            throw new NotFoundException(`Vacancy with bigyapan number ${bigyapanNo} not found`);
+        }
+
+        if (!vacancy.approvedApplicantList) {
+            throw new NotFoundException(`No approved applicant list found for vacancy ${bigyapanNo}`);
+        }
+
+        // Construct the expected file path
+        const expectedFilePath = join(process.cwd(), 'src', 'assets', 'approved-applicants', `${bigyapanNo.split("/")[0]}-${bigyapanNo.split("/")[1]}`, 'approved-applicant-list.xlsx');
+
+        try {
+            await access(expectedFilePath, constants.F_OK);
+        } catch {
+            throw new NotFoundException(`Approved applicant list file not found for vacancy ${bigyapanNo}`);
+        }
+
+        return {
+            filePath: expectedFilePath,
+            fileName: `approved-applicant-list-${bigyapanNo.split("/")[0]}-${bigyapanNo.split("/")[1]}.xlsx`
+        };
+    }
 } 

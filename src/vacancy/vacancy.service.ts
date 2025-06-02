@@ -116,7 +116,7 @@ export class VacancyService {
         }
 
         // Create directory if it doesn't exist
-        const uploadDir = join(process.cwd(), 'src', 'assets', 'approved-applicants', bigyapanNo);
+        const uploadDir = join(process.cwd(), 'src', 'assets', 'approved-applicants', `${bigyapanNo.split("/")[0]}-${bigyapanNo.split("/")[1]}`);
         try {
             await mkdir(uploadDir, { recursive: true });
         } catch (error) {

@@ -1,6 +1,6 @@
 import { Entity, Column, PrimaryColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsInt, Min, Max, Matches } from 'class-validator';
+import { IsString, IsInt, Min, Max, Matches, IsOptional } from 'class-validator';
 import { FiscalYear } from '../../fiscal-year/entities/fiscal-year.entity';
 
 @Entity()
@@ -54,4 +54,10 @@ export class Vacancy {
 
     @Column()
     fiscalYearYear: string;
+
+    @ApiProperty({ description: 'Path to the approved applicant list file', required: false })
+    @IsString()
+    @IsOptional()
+    @Column({ nullable: true })
+    approvedApplicantList: string;
 } 

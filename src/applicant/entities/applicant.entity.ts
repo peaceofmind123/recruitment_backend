@@ -1,6 +1,6 @@
 import { Entity, Column, PrimaryColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsInt, Min, Max, Matches } from 'class-validator';
+import { IsString, IsInt, Min, Max, IsOptional } from 'class-validator';
 
 @Entity()
 export class Applicant {
@@ -11,35 +11,41 @@ export class Applicant {
     @Max(9999)
     employeeId: number;
 
-    @ApiProperty({ description: 'Full name of the applicant' })
+    @ApiProperty({ description: 'Full name of the applicant', required: false })
     @IsString()
-    @Column()
+    @IsOptional()
+    @Column({ nullable: true })
     name: string;
 
-    @ApiProperty({ description: 'Level of the position (1-12)' })
+    @ApiProperty({ description: 'Level of the position (1-12)', required: false })
     @IsInt()
     @Min(1)
     @Max(12)
-    @Column()
+    @IsOptional()
+    @Column({ nullable: true })
     level: number;
 
-    @ApiProperty({ description: 'Position title' })
+    @ApiProperty({ description: 'Position title', required: false })
     @IsString()
-    @Column()
+    @IsOptional()
+    @Column({ nullable: true })
     post: string;
 
-    @ApiProperty({ description: 'Group category' })
+    @ApiProperty({ description: 'Group category', required: false })
     @IsString()
-    @Column()
+    @IsOptional()
+    @Column({ nullable: true })
     group: string;
 
-    @ApiProperty({ description: 'Sub-group category' })
+    @ApiProperty({ description: 'Sub-group category', required: false })
     @IsString()
-    @Column()
+    @IsOptional()
+    @Column({ nullable: true })
     subGroup: string;
 
-    @ApiProperty({ description: 'Service category' })
+    @ApiProperty({ description: 'Service category', required: false })
     @IsString()
-    @Column()
+    @IsOptional()
+    @Column({ nullable: true })
     service: string;
 } 

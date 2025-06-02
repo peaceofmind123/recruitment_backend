@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsInt, Min, Max } from 'class-validator';
+import { IsString, IsInt, Min, Max, IsOptional } from 'class-validator';
 
 export class CreateApplicantDto {
     @ApiProperty({ description: 'Employee ID (4 digit number)' })
@@ -8,29 +8,35 @@ export class CreateApplicantDto {
     @Max(9999)
     employeeId: number;
 
-    @ApiProperty({ description: 'Full name of the applicant' })
+    @ApiProperty({ description: 'Full name of the applicant', required: false })
     @IsString()
-    name: string;
+    @IsOptional()
+    name?: string;
 
-    @ApiProperty({ description: 'Level of the position (1-12)' })
+    @ApiProperty({ description: 'Level of the position (1-12)', required: false })
     @IsInt()
     @Min(1)
     @Max(12)
-    level: number;
+    @IsOptional()
+    level?: number;
 
-    @ApiProperty({ description: 'Position title' })
+    @ApiProperty({ description: 'Position title', required: false })
     @IsString()
-    post: string;
+    @IsOptional()
+    post?: string;
 
-    @ApiProperty({ description: 'Group category' })
+    @ApiProperty({ description: 'Group category', required: false })
     @IsString()
-    group: string;
+    @IsOptional()
+    group?: string;
 
-    @ApiProperty({ description: 'Sub-group category' })
+    @ApiProperty({ description: 'Sub-group category', required: false })
     @IsString()
-    subGroup: string;
+    @IsOptional()
+    subGroup?: string;
 
-    @ApiProperty({ description: 'Service department' })
+    @ApiProperty({ description: 'Service category', required: false })
     @IsString()
-    service: string;
+    @IsOptional()
+    service?: string;
 } 

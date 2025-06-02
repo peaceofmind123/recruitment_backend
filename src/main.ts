@@ -23,7 +23,6 @@ async function bootstrap() {
     .setDescription('The HR Recruitment API documentation')
     .setVersion('1.0')
     .addTag('fiscal-year', 'Fiscal year management')
-    .addTag('vacancy', 'Vacancy management')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

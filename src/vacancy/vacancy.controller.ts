@@ -1,5 +1,6 @@
-import { Controller, Post, Get, Put, Delete, Body, Query } from '@nestjs/common';
+import { Controller, Post, Get, Put, Delete, Body, Query, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { Response } from 'express';
 import { VacancyService } from './vacancy.service';
 import { CreateVacancyDto } from './dto/create-vacancy.dto';
 import { UpdateVacancyDto } from './dto/update-vacancy.dto';
@@ -64,5 +65,14 @@ export class VacancyController {
     @ApiResponse({ status: 404, description: 'Vacancy not found.' })
     delete(@Query('bigyapanNo') bigyapanNo: string): Promise<void> {
         return this.vacancyService.delete(bigyapanNo);
+    }
+
+    @Get('applicant-list-format')
+    @ApiOperation({ summary: 'Download applicant list format Excel file' })
+    @ApiResponse({ status: 200, description: 'Returns the applicant list format Excel file.' })
+    @ApiResponse({ status: 404, description: 'Applicant list format file not found.' })
+    async downloadApplicantListFormat(@Res() res: Response): Promise<void> {
+        const { filePath, fileName } = await this.vacancyService.getApplicantListFormat();
+        res.download(filePath, fileName);
     }
 } 

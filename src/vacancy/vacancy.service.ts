@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { join } from 'path';
+import { existsSync } from 'fs';
 import { Vacancy } from './entities/vacancy.entity';
 import { CreateVacancyDto } from './dto/create-vacancy.dto';
 import { UpdateVacancyDto } from './dto/update-vacancy.dto';
@@ -84,5 +86,16 @@ export class VacancyService {
         }
 
         await this.vacancyRepository.remove(vacancy);
+    }
+
+    async getApplicantListFormat(): Promise<{ filePath: string; fileName: string }> {
+        const fileName = 'applicant-list-format.xlsx';
+        const filePath = join(process.cwd(), 'src', 'assets', fileName);
+
+        if (!existsSync(filePath)) {
+            throw new NotFoundException('Applicant list format file not found');
+        }
+
+        return { filePath, fileName };
     }
 } 

@@ -20,18 +20,20 @@ export class ApplicantService {
         return await this.applicantRepository.find();
     }
 
-    async findOne(employeeId: number): Promise<Applicant> {
-        const applicant = await this.applicantRepository.findOne({ where: { employeeId } });
+    async findOne(employeeId: number, bigyapanNo: string): Promise<Applicant> {
+        const applicant = await this.applicantRepository.findOne({
+            where: { employeeId, bigyapanNo }
+        });
         if (!applicant) {
-            throw new NotFoundException(`Applicant with employee ID ${employeeId} not found`);
+            throw new NotFoundException(`Applicant with employee ID ${employeeId} and bigyapan number ${bigyapanNo} not found`);
         }
         return applicant;
     }
 
-    async remove(employeeId: number): Promise<void> {
-        const result = await this.applicantRepository.delete(employeeId);
+    async remove(employeeId: number, bigyapanNo: string): Promise<void> {
+        const result = await this.applicantRepository.delete({ employeeId, bigyapanNo });
         if (result.affected === 0) {
-            throw new NotFoundException(`Applicant with employee ID ${employeeId} not found`);
+            throw new NotFoundException(`Applicant with employee ID ${employeeId} and bigyapan number ${bigyapanNo} not found`);
         }
     }
 } 

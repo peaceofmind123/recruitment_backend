@@ -87,11 +87,19 @@ export class VacancyService {
 
     async delete(bigyapanNo: string): Promise<void> {
         const vacancy = await this.vacancyRepository.findOne({
-            where: { bigyapanNo }
+            where: { bigyapanNo },
+            relations: ['applicants']
         });
 
         if (!vacancy) {
             throw new NotFoundException(`Vacancy with bigyapan number ${bigyapanNo} not found`);
+        }
+
+        // Delete associated applicant records
+        if (vacancy.applicants && vacancy.applicants.length > 0) {
+            for (const applicant of vacancy.applicants) {
+                await this.applicantService.remove(applicant.employeeId, bigyapanNo);
+            }
         }
 
         // If there's an approved applicant list, try to delete it first

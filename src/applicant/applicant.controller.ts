@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Body, Param, Delete, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Param, Delete, HttpCode, HttpStatus, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { ApplicantService } from './applicant.service';
 import { CreateApplicantDto } from './dto/create-applicant.dto';
 import { Applicant } from './entities/applicant.entity';
@@ -36,23 +36,50 @@ export class ApplicantController {
         return this.applicantService.findAll();
     }
 
-    @Get(':employeeId')
-    @ApiOperation({ summary: 'Get an applicant by employee ID' })
+    @Get('find')
+    @ApiOperation({ summary: 'Get an applicant by employee ID and bigyapan number' })
+    @ApiQuery({
+        name: 'employeeId',
+        required: true,
+        description: 'Employee ID (4 digit number)',
+        type: Number
+    })
+    @ApiQuery({
+        name: 'bigyapanNo',
+        required: true,
+        description: 'Bigyapan number of the vacancy',
+        type: String
+    })
     @ApiResponse({
         status: HttpStatus.OK,
-        description: 'Returns the applicant with the specified employee ID.',
+        description: 'Returns the applicant with the specified employee ID and bigyapan number.',
         type: Applicant
     })
     @ApiResponse({
         status: HttpStatus.NOT_FOUND,
         description: 'Applicant not found.'
     })
-    findOne(@Param('employeeId') employeeId: string): Promise<Applicant> {
-        return this.applicantService.findOne(+employeeId);
+    findOne(
+        @Query('employeeId') employeeId: string,
+        @Query('bigyapanNo') bigyapanNo: string
+    ): Promise<Applicant> {
+        return this.applicantService.findOne(+employeeId, bigyapanNo);
     }
 
-    @Delete(':employeeId')
+    @Delete('remove')
     @ApiOperation({ summary: 'Delete an applicant' })
+    @ApiQuery({
+        name: 'employeeId',
+        required: true,
+        description: 'Employee ID (4 digit number)',
+        type: Number
+    })
+    @ApiQuery({
+        name: 'bigyapanNo',
+        required: true,
+        description: 'Bigyapan number of the vacancy',
+        type: String
+    })
     @ApiResponse({
         status: HttpStatus.OK,
         description: 'The applicant has been successfully deleted.'
@@ -61,7 +88,10 @@ export class ApplicantController {
         status: HttpStatus.NOT_FOUND,
         description: 'Applicant not found.'
     })
-    remove(@Param('employeeId') employeeId: string): Promise<void> {
-        return this.applicantService.remove(+employeeId);
+    remove(
+        @Query('employeeId') employeeId: string,
+        @Query('bigyapanNo') bigyapanNo: string
+    ): Promise<void> {
+        return this.applicantService.remove(+employeeId, bigyapanNo);
     }
 } 

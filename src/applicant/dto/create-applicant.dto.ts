@@ -8,6 +8,10 @@ export class CreateApplicantDto {
     @Max(9999)
     employeeId: number;
 
+    @ApiProperty({ description: 'Bigyapan number (foreign key to vacancy)' })
+    @IsString()
+    bigyapanNo: string;
+
     @ApiProperty({ description: 'Full name of the applicant', required: false })
     @IsString()
     @IsOptional()

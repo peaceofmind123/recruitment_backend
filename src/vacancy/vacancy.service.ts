@@ -7,6 +7,14 @@ import { Vacancy } from './entities/vacancy.entity';
 import { CreateVacancyDto } from './dto/create-vacancy.dto';
 import { UpdateVacancyDto } from './dto/update-vacancy.dto';
 import { FiscalYear } from '../fiscal-year/entities/fiscal-year.entity';
+import { ApplicantService } from '../applicant/applicant.service';
+import { CreateApplicantDto } from '../applicant/dto/create-applicant.dto';
+import * as XLSX from 'xlsx';
+
+interface ExcelRow {
+    'Employee ID': string | number;
+    [key: string]: any;
+}
 
 @Injectable()
 export class VacancyService {
@@ -15,6 +23,7 @@ export class VacancyService {
         private vacancyRepository: Repository<Vacancy>,
         @InjectRepository(FiscalYear)
         private fiscalYearRepository: Repository<FiscalYear>,
+        private applicantService: ApplicantService,
     ) { }
 
     async create(createVacancyDto: CreateVacancyDto): Promise<Vacancy> {
@@ -140,6 +149,22 @@ export class VacancyService {
         // Save the file
         const filePath = join(uploadDir, 'approved-applicant-list.xlsx');
         await writeFile(filePath, file.buffer);
+
+        // Read the Excel file
+        const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json<ExcelRow>(worksheet);
+
+        // Create applicant records
+        for (const row of data) {
+            if (row['Employee ID']) {
+                const createApplicantDto: CreateApplicantDto = {
+                    employeeId: parseInt(row['Employee ID'].toString()),
+                    bigyapanNo: bigyapanNo
+                };
+                await this.applicantService.create(createApplicantDto);
+            }
+        }
 
         // Update vacancy with file path
         vacancy.approvedApplicantList = filePath;

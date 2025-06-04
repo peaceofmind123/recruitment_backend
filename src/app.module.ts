@@ -7,6 +7,7 @@ import { FiscalYearModule } from './fiscal-year/fiscal-year.module';
 import { VacancyModule } from './vacancy/vacancy.module';
 import { CommonModule } from './common/common.module';
 import { ApplicantModule } from './applicant/applicant.module';
+import { EmployeeModule } from './employee/employee.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { ApplicantModule } from './applicant/applicant.module';
     FiscalYearModule,
     VacancyModule,
     ApplicantModule,
+    EmployeeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

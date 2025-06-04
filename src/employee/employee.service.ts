@@ -73,7 +73,6 @@ export class EmployeeService {
 
         // Process each row and save to database
         for (const row of data) {
-            console.debug(row);
             if (!row['EmpNo'] || !row['Full Name']) {
                 continue; // Skip rows without required fields
             }

@@ -1,0 +1,39 @@
+import { Controller, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiConsumes, ApiOperation, ApiTags, ApiBody } from '@nestjs/swagger';
+import { EmployeeService } from './employee.service';
+
+@ApiTags('Employee')
+@Controller('employee')
+export class EmployeeController {
+    constructor(private readonly employeeService: EmployeeService) { }
+
+    @Post('upload-service-detail')
+    @ApiOperation({ summary: 'Upload service detail Excel file' })
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                file: {
+                    type: 'string',
+                    format: 'binary',
+                },
+            },
+        },
+    })
+    @UseInterceptors(FileInterceptor('file', {
+        fileFilter: (req, file, cb) => {
+            if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                file.mimetype === 'application/vnd.ms-excel') {
+                cb(null, true);
+            } else {
+                cb(new Error('Only Excel files are allowed!'), false);
+            }
+        },
+    }))
+    async uploadServiceDetail(@UploadedFile() file: Express.Multer.File) {
+        await this.employeeService.uploadServiceDetail(file);
+        return { message: 'File uploaded and processed successfully' };
+    }
+} 

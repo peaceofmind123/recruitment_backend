@@ -3,6 +3,7 @@ import { Entity, Column, PrimaryColumn } from 'typeorm';
 export enum Sex {
     M = 'M',
     F = 'F',
+    U = 'Unspecified'
 }
 
 @Entity('employees')

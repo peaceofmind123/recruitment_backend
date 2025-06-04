@@ -3,9 +3,13 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { json } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Configure request size limits for file uploads
+  app.use(json({ limit: '50mb' }));
 
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,

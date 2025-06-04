@@ -1,6 +1,7 @@
-import { Entity, Column, PrimaryColumn } from 'typeorm';
+import { Entity, Column, PrimaryColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsInt, Min, Max, IsOptional } from 'class-validator';
+import { Vacancy } from '../../vacancy/entities/vacancy.entity';
 
 @Entity()
 export class Applicant {
@@ -10,6 +11,16 @@ export class Applicant {
     @Min(1000)
     @Max(9999)
     employeeId: number;
+
+    @ApiProperty({ description: 'Bigyapan number (foreign key to vacancy)' })
+    @PrimaryColumn()
+    @IsString()
+    bigyapanNo: string;
+
+    @ApiProperty({ description: 'Associated vacancy', type: () => Vacancy })
+    @ManyToOne(() => Vacancy, vacancy => vacancy.applicants)
+    @JoinColumn({ name: 'bigyapanNo' })
+    vacancy: Vacancy;
 
     @ApiProperty({ description: 'Full name of the applicant', required: false })
     @IsString()

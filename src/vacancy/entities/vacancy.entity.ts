@@ -1,7 +1,8 @@
-import { Entity, Column, PrimaryColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, PrimaryColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsInt, Min, Max, Matches, IsOptional } from 'class-validator';
 import { FiscalYear } from '../../fiscal-year/entities/fiscal-year.entity';
+import { Applicant } from '../../applicant/entities/applicant.entity';
 
 @Entity()
 export class Vacancy {
@@ -9,6 +10,10 @@ export class Vacancy {
     @PrimaryColumn()
     @IsString()
     bigyapanNo: string;
+
+    @ApiProperty({ description: 'Associated applicants', type: () => [Applicant] })
+    @OneToMany(() => Applicant, applicant => applicant.vacancy)
+    applicants: Applicant[];
 
     @ApiProperty({ description: 'Number of positions available' })
     @IsInt()

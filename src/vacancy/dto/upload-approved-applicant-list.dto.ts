@@ -6,4 +6,11 @@ export class UploadApprovedApplicantListDto {
     @IsString()
     @IsNotEmpty()
     bigyapanNo: string;
+
+    @ApiProperty({
+        description: 'Excel file containing the approved applicant list',
+        type: 'string',
+        format: 'binary'
+    })
+    file: Express.Multer.File;
 } 

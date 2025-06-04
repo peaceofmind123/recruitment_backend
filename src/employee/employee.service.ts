@@ -86,13 +86,23 @@ export class EmployeeService {
                 continue;
             }
 
-            const employee = new Employee();
-            employee.employeeId = row['EmpNo'];
+            // Check if employee exists
+            let employee = await this.employeeRepository.findOne({
+                where: { employeeId: row['EmpNo'] }
+            });
+
+            if (!employee) {
+                // Create new employee if doesn't exist
+                employee = new Employee();
+                employee.employeeId = row['EmpNo'];
+            }
+
+            // Update employee fields
             employee.name = row['Full Name'];
             employee.dob = dob;
             employee.seniorityDate = seniorityDate;
             employee.level = row['Level No'] || 0;
-            employee.sex = row['Sex'] || Sex.U; // Default to F if not specified
+            employee.sex = row['Sex'] || Sex.U;
             employee.education = row['Qualification'] || '';
             employee.workingOffice = row['Work Office'] || '';
 

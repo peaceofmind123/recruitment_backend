@@ -58,6 +58,22 @@ export class VacancyService {
         });
     }
 
+    async findByFiscalYearAndBigyapanNo(fiscalYear: string, bigyapanNo: string): Promise<Vacancy> {
+        const vacancy = await this.vacancyRepository.findOne({
+            where: {
+                fiscalYearYear: fiscalYear,
+                bigyapanNo: bigyapanNo
+            },
+            relations: ['fiscalYear']
+        });
+
+        if (!vacancy) {
+            throw new NotFoundException(`Vacancy with fiscal year ${fiscalYear} and bigyapan number ${bigyapanNo} not found`);
+        }
+
+        return vacancy;
+    }
+
     async update(oldBigyapanNo: string, updateVacancyDto: UpdateVacancyDto): Promise<Vacancy> {
         const vacancy = await this.vacancyRepository.findOne({
             where: { bigyapanNo: oldBigyapanNo },

@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Put, Delete, Body, Query, Res, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Get, Put, Delete, Body, Query, Res, UseInterceptors, UploadedFile, BadRequestException, Param } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiConsumes } from '@nestjs/swagger';
 import { Response } from 'express';
@@ -34,6 +34,17 @@ export class VacancyController {
     @ApiResponse({ status: 404, description: 'Fiscal year not found.' })
     findByFiscalYear(@Query('fiscalYearYear') fiscalYearYear: string): Promise<Vacancy[]> {
         return this.vacancyService.findByFiscalYear(fiscalYearYear);
+    }
+
+    @Get(':fiscalYear/:bigyapanNo')
+    @ApiOperation({ summary: 'Get a vacancy by fiscal year and bigyapan number' })
+    @ApiResponse({ status: 200, description: 'Returns the vacancy.', type: Vacancy })
+    @ApiResponse({ status: 404, description: 'Vacancy not found.' })
+    findByFiscalYearAndBigyapanNo(
+        @Param('fiscalYear') fiscalYear: string,
+        @Param('bigyapanNo') bigyapanNo: string
+    ): Promise<Vacancy> {
+        return this.vacancyService.findByFiscalYearAndBigyapanNo(fiscalYear, bigyapanNo);
     }
 
     @Put()

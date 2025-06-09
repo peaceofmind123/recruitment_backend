@@ -1,12 +1,13 @@
 import { Controller, Post, Get, Put, Delete, Body, Query, Res, UseInterceptors, UploadedFile, BadRequestException, Param } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiConsumes } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { Response } from 'express';
 import { VacancyService } from './vacancy.service';
 import { CreateVacancyDto } from './dto/create-vacancy.dto';
 import { UpdateVacancyDto } from './dto/update-vacancy.dto';
 import { UploadApprovedApplicantListDto } from './dto/upload-approved-applicant-list.dto';
 import { Vacancy } from './entities/vacancy.entity';
+import { SeniorityMarksDto } from './dto/seniority-marks.dto';
 
 @ApiTags('vacancies')
 @Controller('vacancy')
@@ -129,5 +130,14 @@ export class VacancyController {
     ): Promise<void> {
         const { filePath, fileName } = await this.vacancyService.getApprovedApplicantList(bigyapanNo);
         res.download(filePath, fileName);
+    }
+
+    @Post(':bigyapanNo/seniority-marks')
+    @ApiOperation({ summary: 'Calculate seniority marks for all applicants of a vacancy' })
+    async calculateSeniorityMarks(
+        @Param('bigyapanNo') bigyapanNo: string,
+        @Body() dto: SeniorityMarksDto
+    ) {
+        return this.vacancyService.calculateSeniorityMarks(bigyapanNo, dto);
     }
 } 

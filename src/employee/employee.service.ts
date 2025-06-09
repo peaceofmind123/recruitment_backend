@@ -5,6 +5,8 @@ import { Employee, Sex } from './entities/employee.entity';
 import * as XLSX from 'xlsx';
 import * as fs from 'fs';
 import * as path from 'path';
+import { FilterByEmployeeIdDto } from './dto/filter-by-employee-id.dto';
+import { In } from 'typeorm';
 
 interface ExcelRow {
     'EmpNo': number;
@@ -112,5 +114,13 @@ export class EmployeeService {
                 throw error;
             }
         }
+    }
+
+    async filterByEmployeeIds(filterDto: FilterByEmployeeIdDto): Promise<Employee[]> {
+        return this.employeeRepository.find({
+            where: {
+                employeeId: In(filterDto.employeeIds)
+            }
+        });
     }
 } 

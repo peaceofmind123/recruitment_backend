@@ -1,7 +1,8 @@
-import { Controller, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Controller, Post, UploadedFile, UseInterceptors, Get, Query, Body } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiConsumes, ApiOperation, ApiTags, ApiBody } from '@nestjs/swagger';
+import { ApiConsumes, ApiOperation, ApiTags, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { EmployeeService } from './employee.service';
+import { FilterByEmployeeIdDto } from './dto/filter-by-employee-id.dto';
 
 @ApiTags('Employee')
 @Controller('employee')
@@ -35,5 +36,11 @@ export class EmployeeController {
     async uploadServiceDetail(@UploadedFile() file: Express.Multer.File) {
         await this.employeeService.uploadServiceDetail(file);
         return { message: 'File uploaded and processed successfully' };
+    }
+
+    @Post('filter-by-employeeId')
+    @ApiOperation({ summary: 'Get employees by their IDs' })
+    async filterByEmployeeIds(@Body() filterDto: FilterByEmployeeIdDto) {
+        return this.employeeService.filterByEmployeeIds(filterDto);
     }
 } 

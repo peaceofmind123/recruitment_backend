@@ -72,7 +72,7 @@ export class VacancyService {
                 fiscalYearYear: fiscalYear,
                 bigyapanNo: bigyapanNo
             },
-            relations: ['fiscalYear', 'applicants']
+            relations: ['fiscalYear', 'applicants', 'applicants.employee']
         });
 
         if (!vacancy) {
@@ -250,20 +250,26 @@ export class VacancyService {
             where: { employeeId: In(employeeIds) }
         });
 
+        // Convert the date string to a Date object
+        const bigyapanEndDate = new Date(dto.bigyapanEndDate);
+
         // Calculate seniority marks for each applicant
         for (const applicant of applicants) {
             const employee = employees.find(emp => emp.employeeId === applicant.employeeId) as Employee;
 
+            // Ensure seniorityDate is a proper Date object
+            const employeeSeniorityDate = new Date(employee.seniorityDate);
+
             // Check if seniority date is later than bigyapan end date
-            if (employee.seniorityDate > dto.bigyapanEndDate) {
+            if (employeeSeniorityDate > bigyapanEndDate) {
                 throw new BadRequestException(
-                    `Employee ${employee.employeeId}'s seniority date (${employee.seniorityDate}) is later than bigyapan end date (${dto.bigyapanEndDate})`
+                    `Employee ${employee.employeeId}'s seniority date (${employeeSeniorityDate}) is later than bigyapan end date (${bigyapanEndDate})`
                 );
             }
 
             // Calculate number of days between seniority date and bigyapan end date
             const numDays = Math.floor(
-                (dto.bigyapanEndDate.getTime() - employee.seniorityDate.getTime()) / (1000 * 60 * 60 * 24)
+                (bigyapanEndDate.getTime() - employeeSeniorityDate.getTime()) / (1000 * 60 * 60 * 24)
             );
 
             // Calculate seniority marks (max 30)

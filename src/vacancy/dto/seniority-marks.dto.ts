@@ -1,11 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString } from 'class-validator';
+import { IsISO8601 } from 'class-validator';
 
 export class SeniorityMarksDto {
     @ApiProperty({
         description: 'End date of the bigyapan (vacancy)',
-        example: '2024-03-20'
+        example: '2024-03-20T00:00:00.000Z'
     })
-    @IsDateString()
-    bigyapanEndDate: Date;
+    @IsISO8601()
+    bigyapanEndDate: string;
 } 

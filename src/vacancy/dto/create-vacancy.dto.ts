@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsInt, Min, Max, Matches } from 'class-validator';
+import { IsString, IsInt, Min, Max, Matches, IsOptional, IsArray } from 'class-validator';
 
 export class CreateVacancyDto {
     @ApiProperty({ description: 'Bigyapan number (unique identifier)' })
@@ -39,4 +39,16 @@ export class CreateVacancyDto {
         message: 'Year must be in YYYY/YY format (e.g., "2081/82")'
     })
     fiscalYearYear: string;
+
+    @ApiProperty({ description: 'Minimum required qualifications', type: [String], required: false })
+    @IsOptional()
+    @IsArray()
+    @IsString({ each: true })
+    minQualifications?: string[];
+
+    @ApiProperty({ description: 'Additional qualifications', type: [String], required: false })
+    @IsOptional()
+    @IsArray()
+    @IsString({ each: true })
+    additionalQualifications?: string[];
 } 

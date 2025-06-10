@@ -14,6 +14,7 @@ import { Applicant } from '../applicant/entities/applicant.entity';
 import { Employee } from '../employee/entities/employee.entity';
 import { SeniorityMarksDto } from './dto/seniority-marks.dto';
 import { In } from 'typeorm';
+import { Qualification } from './entities/qualification.entity';
 
 interface ExcelRow {
     'Employee ID': string | number;
@@ -32,6 +33,8 @@ export class VacancyService {
         private applicantRepository: Repository<Applicant>,
         @InjectRepository(Employee)
         private employeeRepository: Repository<Employee>,
+        @InjectRepository(Qualification)
+        private qualificationRepository: Repository<Qualification>,
     ) { }
 
     async create(createVacancyDto: CreateVacancyDto): Promise<Vacancy> {
@@ -43,9 +46,27 @@ export class VacancyService {
             throw new NotFoundException(`Fiscal year ${createVacancyDto.fiscalYearYear} not found`);
         }
 
+        // Find existing qualifications
+        let minQualifications: Qualification[] = [];
+        let additionalQualifications: Qualification[] = [];
+
+        if (createVacancyDto.minQualifications?.length) {
+            minQualifications = await this.qualificationRepository.findBy({
+                qualification: In(createVacancyDto.minQualifications)
+            });
+        }
+
+        if (createVacancyDto.additionalQualifications?.length) {
+            additionalQualifications = await this.qualificationRepository.findBy({
+                qualification: In(createVacancyDto.additionalQualifications)
+            });
+        }
+
         const vacancy = this.vacancyRepository.create({
             ...createVacancyDto,
-            fiscalYear
+            fiscalYear,
+            minQualifications,
+            additionalQualifications
         });
 
         return this.vacancyRepository.save(vacancy);

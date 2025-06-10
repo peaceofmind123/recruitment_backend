@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Employee, Sex } from './entities/employee.entity';
+import { Qualification } from '../vacancy/entities/qualification.entity';
 import * as XLSX from 'xlsx';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -24,6 +25,8 @@ export class EmployeeService {
     constructor(
         @InjectRepository(Employee)
         private employeeRepository: Repository<Employee>,
+        @InjectRepository(Qualification)
+        private qualificationRepository: Repository<Qualification>,
     ) { }
 
     private parseDate(dateStr: string): Date | undefined {
@@ -45,6 +48,34 @@ export class EmployeeService {
         }
 
         return undefined;
+    }
+
+    private async extractAndSaveQualifications(qualificationStr: string): Promise<void> {
+        if (!qualificationStr) return;
+
+        // Split by '|' to get different qualification parts
+        const parts = qualificationStr.split('|').map(part => part.trim());
+
+        for (const part of parts) {
+            // Split by '-' and take the first subpart
+            const subparts = part.split('-').map(subpart => subpart.trim());
+            if (subparts.length > 0) {
+                const qualification = subparts[0];
+
+                // Check if qualification already exists
+                const existingQualification = await this.qualificationRepository.findOne({
+                    where: { qualification }
+                });
+
+                if (!existingQualification) {
+                    // Create new qualification if it doesn't exist
+                    const newQualification = this.qualificationRepository.create({
+                        qualification
+                    });
+                    await this.qualificationRepository.save(newQualification);
+                }
+            }
+        }
     }
 
     async uploadServiceDetail(file: Express.Multer.File): Promise<void> {
@@ -85,6 +116,11 @@ export class EmployeeService {
             if (!dob || !seniorityDate) {
                 console.warn(`Skipping row for employee ${row['EmpNo']} due to invalid dates`);
                 continue;
+            }
+
+            // Extract and save qualifications
+            if (row['Qualification']) {
+                await this.extractAndSaveQualifications(row['Qualification']);
             }
 
             // Check if employee exists

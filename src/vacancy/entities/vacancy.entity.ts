@@ -1,8 +1,9 @@
-import { Entity, Column, PrimaryColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Entity, Column, PrimaryColumn, ManyToOne, JoinColumn, OneToMany, ManyToMany, JoinTable } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsInt, Min, Max, Matches, IsOptional } from 'class-validator';
 import { FiscalYear } from '../../fiscal-year/entities/fiscal-year.entity';
 import { Applicant } from '../../applicant/entities/applicant.entity';
+import { Qualification } from './qualification.entity';
 
 @Entity()
 export class Vacancy {
@@ -65,4 +66,24 @@ export class Vacancy {
     @IsOptional()
     @Column({ nullable: true })
     approvedApplicantList: string;
+
+    @ApiProperty({ description: 'Minimum required qualifications', type: () => [Qualification], required: false })
+    @IsOptional()
+    @ManyToMany(() => Qualification)
+    @JoinTable({
+        name: 'vacancy_min_qualifications',
+        joinColumn: { name: 'vacancy_bigyapan_no', referencedColumnName: 'bigyapanNo' },
+        inverseJoinColumn: { name: 'qualification_qualification', referencedColumnName: 'qualification' }
+    })
+    minQualifications: Qualification[];
+
+    @ApiProperty({ description: 'Additional qualifications', type: () => [Qualification], required: false })
+    @IsOptional()
+    @ManyToMany(() => Qualification)
+    @JoinTable({
+        name: 'vacancy_additional_qualifications',
+        joinColumn: { name: 'vacancy_bigyapan_no', referencedColumnName: 'bigyapanNo' },
+        inverseJoinColumn: { name: 'qualification_qualification', referencedColumnName: 'qualification' }
+    })
+    additionalQualifications: Qualification[];
 } 

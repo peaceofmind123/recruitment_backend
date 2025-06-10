@@ -1,4 +1,5 @@
-import { Entity, Column, PrimaryColumn } from 'typeorm';
+import { Entity, Column, PrimaryColumn, ManyToMany, JoinTable } from 'typeorm';
+import { Qualification } from '../../vacancy/entities/qualification.entity';
 
 export enum Sex {
     M = 'M',
@@ -34,4 +35,12 @@ export class Employee {
 
     @Column()
     workingOffice: string;
+
+    @ManyToMany(() => Qualification)
+    @JoinTable({
+        name: 'employee_qualifications',
+        joinColumn: { name: 'employee_id', referencedColumnName: 'employeeId' },
+        inverseJoinColumn: { name: 'qualification_qualification', referencedColumnName: 'qualification' }
+    })
+    qualifications: Qualification[];
 } 

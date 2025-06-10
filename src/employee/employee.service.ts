@@ -50,8 +50,11 @@ export class EmployeeService {
         return undefined;
     }
 
-    private async extractAndSaveQualifications(qualificationStr: string): Promise<void> {
-        if (!qualificationStr) return;
+    private async extractAndSaveQualifications(qualificationStr: string): Promise<Qualification[]> {
+        if (!qualificationStr) return [];
+
+        const savedQualifications: Qualification[] = [];
+        const uniqueQualifications = new Set<string>();
 
         // Split by '|' to get different qualification parts
         const parts = qualificationStr.split('|').map(part => part.trim());
@@ -62,20 +65,35 @@ export class EmployeeService {
             if (subparts.length > 0) {
                 const qualification = subparts[0];
 
-                // Check if qualification already exists
-                const existingQualification = await this.qualificationRepository.findOne({
-                    where: { qualification }
-                });
+                // Skip if we've already processed this qualification
+                if (uniqueQualifications.has(qualification)) {
+                    continue;
+                }
+                uniqueQualifications.add(qualification);
 
-                if (!existingQualification) {
-                    // Create new qualification if it doesn't exist
-                    const newQualification = this.qualificationRepository.create({
-                        qualification
+                try {
+                    // Check if qualification already exists
+                    let existingQualification = await this.qualificationRepository.findOne({
+                        where: { qualification }
                     });
-                    await this.qualificationRepository.save(newQualification);
+
+                    if (!existingQualification) {
+                        // Create new qualification if it doesn't exist
+                        existingQualification = this.qualificationRepository.create({
+                            qualification
+                        });
+                        await this.qualificationRepository.save(existingQualification);
+                    }
+
+                    savedQualifications.push(existingQualification);
+                } catch (error) {
+                    // If we hit a unique constraint violation, just skip this qualification
+                    console.warn(`Skipping duplicate qualification: ${qualification}`);
+                    continue;
                 }
             }
         }
+        return savedQualifications;
     }
 
     async uploadServiceDetail(file: Express.Multer.File): Promise<void> {
@@ -119,13 +137,15 @@ export class EmployeeService {
             }
 
             // Extract and save qualifications
+            let qualifications: Qualification[] = [];
             if (row['Qualification']) {
-                await this.extractAndSaveQualifications(row['Qualification']);
+                qualifications = await this.extractAndSaveQualifications(row['Qualification']);
             }
 
             // Check if employee exists
             let employee = await this.employeeRepository.findOne({
-                where: { employeeId: row['EmpNo'] }
+                where: { employeeId: row['EmpNo'] },
+                relations: ['qualifications']
             });
 
             if (!employee) {
@@ -142,6 +162,7 @@ export class EmployeeService {
             employee.sex = row['Sex'] || Sex.U;
             employee.education = row['Qualification'] || '';
             employee.workingOffice = row['Work Office'] || '';
+            employee.qualifications = qualifications;
 
             try {
                 await this.employeeRepository.save(employee);

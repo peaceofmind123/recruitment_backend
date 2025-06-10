@@ -8,14 +8,17 @@ import { ApplicantModule } from '../applicant/applicant.module';
 import { ApplicantService } from '../applicant/applicant.service';
 import { Applicant } from '../applicant/entities/applicant.entity';
 import { Employee } from '../employee/entities/employee.entity';
+import { Qualification } from './entities/qualification.entity';
+import { QualificationController } from './qualification.controller';
+import { QualificationService } from './qualification.service';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([Vacancy, FiscalYear, Applicant, Employee]),
+        TypeOrmModule.forFeature([Vacancy, FiscalYear, Applicant, Employee, Qualification]),
         ApplicantModule
     ],
-    controllers: [VacancyController],
-    providers: [VacancyService, ApplicantService],
+    controllers: [VacancyController, QualificationController],
+    providers: [VacancyService, ApplicantService, QualificationService],
     exports: [TypeOrmModule],
 })
 export class VacancyModule { } 

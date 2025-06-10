@@ -83,7 +83,7 @@ export class VacancyService {
 
         return this.vacancyRepository.find({
             where: { fiscalYearYear },
-            relations: ['fiscalYear']
+            relations: ['fiscalYear', 'minQualifications', 'additionalQualifications']
         });
     }
 
@@ -106,7 +106,7 @@ export class VacancyService {
     async update(oldBigyapanNo: string, updateVacancyDto: UpdateVacancyDto): Promise<Vacancy> {
         const vacancy = await this.vacancyRepository.findOne({
             where: { bigyapanNo: oldBigyapanNo },
-            relations: ['fiscalYear']
+            relations: ['fiscalYear', 'minQualifications', 'additionalQualifications']
         });
 
         if (!vacancy) {
@@ -124,8 +124,28 @@ export class VacancyService {
             }
         }
 
+        // Find existing qualifications if provided
+        let minQualifications: Qualification[] = [];
+        let additionalQualifications: Qualification[] = [];
+
+        if (updateVacancyDto.minQualifications?.length) {
+            minQualifications = await this.qualificationRepository.findBy({
+                qualification: In(updateVacancyDto.minQualifications)
+            });
+        }
+
+        if (updateVacancyDto.additionalQualifications?.length) {
+            additionalQualifications = await this.qualificationRepository.findBy({
+                qualification: In(updateVacancyDto.additionalQualifications)
+            });
+        }
+
         // Update all fields
-        Object.assign(vacancy, updateVacancyDto);
+        Object.assign(vacancy, {
+            ...updateVacancyDto,
+            minQualifications: updateVacancyDto.minQualifications ? minQualifications : vacancy.minQualifications,
+            additionalQualifications: updateVacancyDto.additionalQualifications ? additionalQualifications : vacancy.additionalQualifications
+        });
 
         return this.vacancyRepository.save(vacancy);
     }

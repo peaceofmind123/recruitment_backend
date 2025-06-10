@@ -29,7 +29,7 @@ export class Applicant {
     employee: Employee;
 
     @ApiProperty({ description: 'Seniority marks of the applicant' })
-    @Column({ type: 'decimal', precision: 20, scale: 10 })
+    @Column({ type: 'decimal', precision: 20, scale: 10, nullable: true })
     @IsNumber()
     @Min(0)
     @IsOptional()

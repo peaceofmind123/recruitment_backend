@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsInt, Min, Max } from 'class-validator';
+import { IsString, IsInt, Min, Max, IsOptional, IsArray } from 'class-validator';
 
 export class UpdateVacancyDto {
     @ApiProperty({ description: 'New bigyapan number (optional)' })
@@ -32,4 +32,16 @@ export class UpdateVacancyDto {
     @ApiProperty({ description: 'Position title' })
     @IsString()
     position: string;
+
+    @ApiProperty({ description: 'Minimum required qualifications', type: [String], required: false })
+    @IsOptional()
+    @IsArray()
+    @IsString({ each: true })
+    minQualifications?: string[];
+
+    @ApiProperty({ description: 'Additional qualifications', type: [String], required: false })
+    @IsOptional()
+    @IsArray()
+    @IsString({ each: true })
+    additionalQualifications?: string[];
 } 

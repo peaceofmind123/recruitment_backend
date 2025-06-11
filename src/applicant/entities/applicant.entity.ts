@@ -34,4 +34,11 @@ export class Applicant {
     @Min(0)
     @IsOptional()
     seniorityMarks: number;
+
+    @ApiProperty({ description: 'Education marks of the applicant' })
+    @Column({ type: 'decimal', precision: 20, scale: 10, nullable: true })
+    @IsNumber()
+    @Min(0)
+    @IsOptional()
+    educationMarks: number;
 } 

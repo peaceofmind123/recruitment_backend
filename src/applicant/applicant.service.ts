@@ -13,7 +13,19 @@ export class ApplicantService {
 
     async create(createApplicantDto: CreateApplicantDto): Promise<Applicant> {
         const applicant = this.applicantRepository.create(createApplicantDto);
-        return await this.applicantRepository.save(applicant);
+        const savedApplicant = await this.applicantRepository.save(applicant);
+
+        // Load the applicant with employee relations
+        const loadedApplicant = await this.applicantRepository.findOne({
+            where: { employeeId: savedApplicant.employeeId, bigyapanNo: savedApplicant.bigyapanNo },
+            relations: ['employee', 'employee.qualifications']
+        });
+
+        if (!loadedApplicant) {
+            throw new NotFoundException(`Failed to load created applicant with employee ID ${savedApplicant.employeeId} and bigyapan number ${savedApplicant.bigyapanNo}`);
+        }
+
+        return loadedApplicant;
     }
 
     async findAll(): Promise<Applicant[]> {

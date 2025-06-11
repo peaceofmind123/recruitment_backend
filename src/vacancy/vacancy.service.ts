@@ -226,46 +226,75 @@ export class VacancyService {
     async uploadApprovedApplicantList(bigyapanNo: string, file: Express.Multer.File): Promise<Vacancy> {
         const vacancy = await this.vacancyRepository.findOne({
             where: { bigyapanNo },
-            relations: ['fiscalYear']
+            relations: ['fiscalYear', 'minQualifications', 'additionalQualifications']
         });
 
         if (!vacancy) {
             throw new NotFoundException(`Vacancy with bigyapan number ${bigyapanNo} not found`);
         }
 
-        if (vacancy.approvedApplicantList) {
-            throw new BadRequestException('Approved applicant list already exists for this vacancy');
-        }
-
         // Create directory if it doesn't exist
         const uploadDir = join(process.cwd(), 'src', 'assets', 'approved-applicants', `${bigyapanNo.split("/")[0]}-${bigyapanNo.split("/")[1]}`);
-        try {
-            await mkdir(uploadDir, { recursive: true });
-        } catch (error) {
-            // Ignore error if directory already exists
-            if (error.code !== 'EEXIST') {
-                throw error;
-            }
-        }
+        await mkdir(uploadDir, { recursive: true });
 
         // Save the file
-        const filePath = join(uploadDir, 'approved-applicant-list.xlsx');
+        const filePath = join(uploadDir, file.originalname);
         await writeFile(filePath, file.buffer);
 
         // Read the Excel file
         const workbook = XLSX.read(file.buffer, { type: 'buffer' });
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        const data = XLSX.utils.sheet_to_json<ExcelRow>(worksheet);
+        const rows = XLSX.utils.sheet_to_json<ExcelRow>(worksheet);
 
-        // Create applicant records
-        for (const row of data) {
-            if (row['Employee ID']) {
+        // Process each row
+        for (const row of rows) {
+            const employeeId = typeof row['Employee ID'] === 'number' ? row['Employee ID'] : parseInt(row['Employee ID']);
+
+            // Find or create applicant
+            let applicant = await this.applicantRepository.findOne({
+                where: { employeeId, bigyapanNo },
+                relations: ['employee', 'employee.qualifications']
+            });
+
+            if (!applicant) {
+                // Create new applicant
                 const createApplicantDto: CreateApplicantDto = {
-                    employeeId: parseInt(row['Employee ID'].toString()),
-                    bigyapanNo: bigyapanNo
+                    employeeId,
+                    bigyapanNo
                 };
-                await this.applicantService.create(createApplicantDto);
+                applicant = await this.applicantService.create(createApplicantDto);
             }
+
+            // Calculate education marks
+            const employeeQualifications = applicant.employee?.qualifications || [];
+            const employeeQualificationNames = employeeQualifications.map(q => q.qualification);
+
+            let educationMarks = 0;
+
+            // Check for minimum qualifications (9.0 marks)
+            const hasMinimumQualification = vacancy.minQualifications.some(
+                minQual => employeeQualificationNames.includes(minQual.qualification)
+            );
+            if (hasMinimumQualification) {
+                educationMarks += 9.0;
+            }
+
+            // Check for additional qualifications (3.0 marks)
+            const hasAdditionalQualification = vacancy.additionalQualifications.some(
+                addQual => employeeQualificationNames.includes(addQual.qualification)
+            );
+            if (hasAdditionalQualification) {
+                educationMarks += 3.0;
+            }
+
+            console.log(`Employee ${employeeId} qualifications:`, employeeQualificationNames);
+            console.log(`Vacancy min qualifications:`, vacancy.minQualifications.map(q => q.qualification));
+            console.log(`Vacancy additional qualifications:`, vacancy.additionalQualifications.map(q => q.qualification));
+            console.log(`Education marks calculated:`, educationMarks);
+
+            // Update applicant with education marks
+            applicant.educationMarks = educationMarks;
+            await this.applicantRepository.save(applicant);
         }
 
         // Update vacancy with file path

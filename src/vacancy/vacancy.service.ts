@@ -107,6 +107,28 @@ export class VacancyService {
             throw new NotFoundException(`Vacancy with fiscal year ${fiscalYear} and bigyapan number ${bigyapanNo} not found`);
         }
 
+        // Transform applicants to include qualification match fields
+        if (vacancy.applicants) {
+            vacancy.applicants = vacancy.applicants.map(applicant => {
+                const employeeQualifications = applicant.employee?.qualifications || [];
+                const employeeQualificationNames = employeeQualifications.map(q => q.qualification);
+
+                const meetsMinimumQualification = vacancy.minQualifications.some(
+                    minQual => employeeQualificationNames.includes(minQual.qualification)
+                );
+
+                const meetsAdditionalQualification = vacancy.additionalQualifications.some(
+                    addQual => employeeQualificationNames.includes(addQual.qualification)
+                );
+
+                return {
+                    ...applicant,
+                    meetsMinimumQualification,
+                    meetsAdditionalQualification
+                };
+            });
+        }
+
         return vacancy;
     }
 

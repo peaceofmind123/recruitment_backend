@@ -93,7 +93,14 @@ export class VacancyService {
                 fiscalYearYear: fiscalYear,
                 bigyapanNo: bigyapanNo
             },
-            relations: ['fiscalYear', 'applicants', 'applicants.employee', 'minQualifications', 'additionalQualifications']
+            relations: [
+                'fiscalYear',
+                'applicants',
+                'applicants.employee',
+                'applicants.employee.qualifications',
+                'minQualifications',
+                'additionalQualifications'
+            ]
         });
 
         if (!vacancy) {

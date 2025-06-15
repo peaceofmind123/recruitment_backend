@@ -8,6 +8,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { FilterByEmployeeIdDto } from './dto/filter-by-employee-id.dto';
 import { In } from 'typeorm';
+import { EmployeeDetailDto } from './dto/employee-detail.dto';
 
 interface ExcelRow {
     'EmpNo': number;
@@ -179,5 +180,98 @@ export class EmployeeService {
                 employeeId: In(filterDto.employeeIds)
             }
         });
+    }
+
+    private parseExcelDate(dateStr: string): string {
+        if (!dateStr) return '';
+
+        // Extract date part from the string (e.g., "14-APR-69" from "Date of Birth: 14-APR-69 (2026/01/02)")
+        const dateMatch = dateStr.match(/(\d{2})-([A-Z]{3})-(\d{2,4})/);
+        if (!dateMatch) return '';
+
+        const [_, day, month, year] = dateMatch;
+        const monthMap: { [key: string]: string } = {
+            'JAN': 'January', 'FEB': 'February', 'MAR': 'March', 'APR': 'April',
+            'MAY': 'May', 'JUN': 'June', 'JUL': 'July', 'AUG': 'August',
+            'SEP': 'September', 'OCT': 'October', 'NOV': 'November', 'DEC': 'December'
+        };
+
+        // Handle 2-digit years
+        const fullYear = year.length === 2 ? (parseInt(year) > 50 ? `19${year}` : `20${year}`) : year;
+
+        return `${day} ${monthMap[month]} ${fullYear}`;
+    }
+
+    async uploadEmployeeDetail(file: Express.Multer.File): Promise<EmployeeDetailDto[]> {
+        if (!file || !file.buffer) {
+            throw new Error('No file uploaded or file is empty');
+        }
+
+        const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        const employeeDetails: EmployeeDetailDto[] = [];
+        let currentEmployee: Partial<EmployeeDetailDto> = {};
+
+        for (const row of data) {
+            if (!Array.isArray(row) || row.length === 0) continue;
+
+            const firstCell = row[0]?.toString() || '';
+
+            // Extract employee ID
+            const employeeIdMatch = firstCell.match(/Employee No:\s*(\d+)/);
+            if (employeeIdMatch) {
+                if (Object.keys(currentEmployee).length > 0) {
+                    employeeDetails.push(currentEmployee as EmployeeDetailDto);
+                }
+                currentEmployee = {
+                    employeeId: employeeIdMatch[1]
+                };
+                continue;
+            }
+
+            // Extract name
+            const nameMatch = firstCell.match(/Full Name:\s*(.+)/);
+            if (nameMatch) {
+                currentEmployee.name = nameMatch[1].trim();
+                continue;
+            }
+
+            // Extract DOB
+            const dobMatch = firstCell.match(/Date of Birth:\s*(.+?)(?:\s*\(|$)/);
+            if (dobMatch) {
+                currentEmployee.dob = this.parseExcelDate(dobMatch[1]);
+                continue;
+            }
+
+            // Extract DOR
+            const dorMatch = firstCell.match(/DOR:\s*(.+?)(?:\s*\(|$)/);
+            if (dorMatch) {
+                currentEmployee.dor = this.parseExcelDate(dorMatch[1]);
+                continue;
+            }
+
+            // Extract Join Date
+            const joinDateMatch = firstCell.match(/Join Date:\s*(.+?)(?:\s*\(|$)/);
+            if (joinDateMatch) {
+                currentEmployee.joinDate = this.parseExcelDate(joinDateMatch[1]);
+                continue;
+            }
+
+            // Extract Perm Date
+            const permDateMatch = firstCell.match(/Perm Date:\s*(.+?)(?:\s*\(|$)/);
+            if (permDateMatch) {
+                currentEmployee.permDate = this.parseExcelDate(permDateMatch[1]);
+                continue;
+            }
+        }
+
+        // Add the last employee if exists
+        if (Object.keys(currentEmployee).length > 0) {
+            employeeDetails.push(currentEmployee as EmployeeDetailDto);
+        }
+
+        return employeeDetails;
     }
 } 

@@ -6,7 +6,9 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { json } from 'express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: ['error', 'warn', 'log', 'debug', 'verbose'],
+  });
 
   // Configure request size limits for file uploads
   app.use(json({ limit: '50mb' }));
@@ -30,8 +32,15 @@ async function bootstrap() {
     .addTag('employee', 'Employee management')
     .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+  const document = SwaggerModule.createDocument(app, config, {
+    deepScanRoutes: true,
+  });
+
+  SwaggerModule.setup('api', app, document, {
+    swaggerOptions: {
+      persistAuthorization: true,
+    },
+  });
 
   await app.listen(process.env.PORT ?? 3000);
 }

@@ -252,7 +252,7 @@ export class EmployeeService {
             }
 
             // Check for Assignment Details section
-            if (firstCell === 'Assignment Details:') {
+            if (firstCell.trim() === 'Assignment Details:') {
                 isProcessingAssignments = true;
                 // Get headers from next row
                 if (i + 1 < data.length) {
@@ -267,7 +267,7 @@ export class EmployeeService {
             }
 
             // Check for end of assignments section
-            if (firstCell === 'Qualification Details: ') {
+            if (firstCell.trim() === 'Qualification Details:') {
                 isProcessingAssignments = false;
                 if (currentEmployee.employeeId) {
                     // Create a new object to ensure all properties are included

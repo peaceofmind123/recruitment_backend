@@ -4,6 +4,7 @@ import { ApiConsumes, ApiOperation, ApiTags, ApiBody, ApiQuery, ApiResponse } fr
 import { EmployeeService } from './employee.service';
 import { FilterByEmployeeIdDto } from './dto/filter-by-employee-id.dto';
 import { EmployeeDetailDto } from './dto/employee-detail.dto';
+import { EmployeeDetailResponseDto } from './dto/employee-detail-response.dto';
 
 @ApiTags('Employee')
 @Controller('employee')
@@ -63,7 +64,7 @@ export class EmployeeController {
     @ApiResponse({
         status: 200,
         description: 'Successfully processed employee details',
-        type: [EmployeeDetailDto]
+        type: EmployeeDetailResponseDto
     })
     @ApiResponse({
         status: 400,
@@ -79,7 +80,11 @@ export class EmployeeController {
             }
         },
     }))
-    async uploadEmployeeDetail(@UploadedFile() file: Express.Multer.File): Promise<EmployeeDetailDto[]> {
-        return this.employeeService.uploadEmployeeDetail(file);
+    async uploadEmployeeDetail(@UploadedFile() file: Express.Multer.File): Promise<EmployeeDetailResponseDto> {
+        const employeeDetails = await this.employeeService.uploadEmployeeDetail(file);
+        return {
+            employeeDetails,
+            employeeCount: employeeDetails.length
+        };
     }
 } 

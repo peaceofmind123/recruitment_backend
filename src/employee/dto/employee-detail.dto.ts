@@ -1,21 +1,29 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { AssignmentDetailDto } from './assignment-detail.dto';
 
 export class EmployeeDetailDto {
     @ApiProperty({ description: 'Employee ID' })
     employeeId: string;
 
-    @ApiProperty({ description: 'Full name of the employee' })
-    name: string;
+    @ApiProperty({ description: 'Full name of the employee', required: false })
+    name?: string;
 
-    @ApiProperty({ description: 'Date of birth' })
-    dob: string;
+    @ApiProperty({ description: 'Date of birth', required: false })
+    dob?: string;
 
-    @ApiProperty({ description: 'Date of retirement' })
-    dor: string;
+    @ApiProperty({ description: 'Date of retirement', required: false })
+    dor?: string;
 
-    @ApiProperty({ description: 'Join date' })
-    joinDate: string;
+    @ApiProperty({ description: 'Join date', required: false })
+    joinDate?: string;
 
-    @ApiProperty({ description: 'Permanent date' })
-    permDate: string;
+    @ApiProperty({ description: 'Permanent date', required: false })
+    permDate?: string;
+
+    @ApiProperty({
+        description: 'Array of assignment details',
+        type: [AssignmentDetailDto],
+        required: false
+    })
+    assignments?: AssignmentDetailDto[];
 } 

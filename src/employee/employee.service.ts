@@ -9,6 +9,8 @@ import * as path from 'path';
 import { FilterByEmployeeIdDto } from './dto/filter-by-employee-id.dto';
 import { In } from 'typeorm';
 import { EmployeeDetailDto } from './dto/employee-detail.dto';
+import { AssignmentDetailDto } from './dto/assignment-detail.dto';
+import * as crypto from 'crypto';
 
 interface ExcelRow {
     'EmpNo': number;
@@ -213,8 +215,12 @@ export class EmployeeService {
 
         const employeeDetails: EmployeeDetailDto[] = [];
         let currentEmployee: Partial<EmployeeDetailDto> = {};
+        let isProcessingAssignments = false;
+        let assignmentHeaders: string[] = [];
+        let currentAssignments: AssignmentDetailDto[] = [];
 
-        for (const row of data) {
+        for (let i = 0; i < data.length; i++) {
+            const row = data[i];
             if (!Array.isArray(row) || row.length === 0) continue;
 
             const firstCell = row[0]?.toString() || '';
@@ -222,12 +228,133 @@ export class EmployeeService {
             // Extract employee ID
             const employeeIdMatch = firstCell.match(/Employee No:\s*(\d+)/);
             if (employeeIdMatch) {
-                if (Object.keys(currentEmployee).length > 0) {
-                    employeeDetails.push(currentEmployee as EmployeeDetailDto);
+                if (Object.keys(currentEmployee).length > 0 && currentEmployee.employeeId) {
+                    // Create a new object to ensure all properties are included
+                    const employeeDetail: EmployeeDetailDto = {
+                        employeeId: currentEmployee.employeeId,
+                        name: currentEmployee.name,
+                        dob: currentEmployee.dob,
+                        dor: currentEmployee.dor,
+                        joinDate: currentEmployee.joinDate,
+                        permDate: currentEmployee.permDate,
+                        assignments: [...currentAssignments] // Create a new array with all assignments
+                    };
+                    employeeDetails.push(employeeDetail);
+                    console.log('Adding employee with assignments:', employeeDetail); // Debug log
                 }
                 currentEmployee = {
-                    employeeId: employeeIdMatch[1]
+                    employeeId: employeeIdMatch[1],
+                    assignments: []
                 };
+                currentAssignments = [];
+                isProcessingAssignments = false;
+                continue;
+            }
+
+            // Check for Assignment Details section
+            if (firstCell === 'Assignment Details:') {
+                isProcessingAssignments = true;
+                // Get headers from next row
+                if (i + 1 < data.length) {
+                    const headerRow = data[i + 1];
+                    if (Array.isArray(headerRow)) {
+                        assignmentHeaders = headerRow.map(h => h?.toString() || '');
+                        console.log('Assignment Headers:', assignmentHeaders); // Debug log
+                    }
+                }
+                i += 2; // Skip header row
+                continue;
+            }
+
+            // Check for end of assignments section
+            if (firstCell === 'Qualification Details: ') {
+                isProcessingAssignments = false;
+                if (currentEmployee.employeeId) {
+                    // Create a new object to ensure all properties are included
+                    const employeeDetail: EmployeeDetailDto = {
+                        employeeId: currentEmployee.employeeId,
+                        name: currentEmployee.name,
+                        dob: currentEmployee.dob,
+                        dor: currentEmployee.dor,
+                        joinDate: currentEmployee.joinDate,
+                        permDate: currentEmployee.permDate,
+                        assignments: [...currentAssignments] // Create a new array with all assignments
+                    };
+                    employeeDetails.push(employeeDetail);
+                    console.log('Adding employee with assignments:', employeeDetail); // Debug log
+                }
+                currentAssignments = [];
+                continue;
+            }
+
+            // Process assignment data
+            if (isProcessingAssignments && row.length > 0) {
+                // Skip empty rows or rows without enough data
+                if (row.every(cell => !cell)) continue;
+
+                const assignment: Partial<AssignmentDetailDto> = {
+                    id: crypto.randomUUID(),
+                    employeeId: parseInt(currentEmployee.employeeId || '0')
+                };
+
+                // Map the columns based on headers
+                assignmentHeaders.forEach((header, index) => {
+                    const value = row[index]?.toString() || '';
+                    if (!value) return; // Skip empty values
+
+                    switch (header) {
+                        case 'Position':
+                            assignment.position = value;
+                            break;
+                        case 'Jobs':
+                            assignment.jobs = value;
+                            break;
+                        case 'Function':
+                            assignment.function = value;
+                            break;
+                        case 'Emp. Category':
+                            assignment.empCategory = value;
+                            break;
+                        case 'Emp. Type':
+                            assignment.empType = value;
+                            break;
+                        case 'Work Office':
+                            assignment.workOffice = value;
+                            break;
+                        case 'Start Date BS':
+                            assignment.startDateBS = value;
+                            break;
+                        case 'End Date BS':
+                            assignment.endDateBS = value;
+                            break;
+                        case 'Seniority Date BS':
+                            assignment.seniorityDateBS = value;
+                            break;
+                        case 'Level':
+                            assignment.level = parseInt(value) || 0;
+                            break;
+                        case 'Perm. Level Date BS':
+                            assignment.permLevelDateBS = value;
+                            break;
+                        case 'Reason':
+                            assignment.reasonForPosition = value;
+                            break;
+                        case 'Start Date':
+                            const startDate = this.parseExcelDate(value);
+                            assignment.startDate = startDate ? new Date(startDate) : undefined;
+                            break;
+                        case 'Seniority Date':
+                            const seniorityDate = this.parseExcelDate(value);
+                            assignment.seniorityDate = seniorityDate ? new Date(seniorityDate) : undefined;
+                            break;
+                    }
+                });
+
+                // Only add assignment if it has more than just id and employeeId
+                if (Object.keys(assignment).length > 2) {
+                    console.log('Adding assignment:', assignment); // Debug log
+                    currentAssignments.push(assignment as AssignmentDetailDto);
+                }
                 continue;
             }
 
@@ -268,8 +395,19 @@ export class EmployeeService {
         }
 
         // Add the last employee if exists
-        if (Object.keys(currentEmployee).length > 0) {
-            employeeDetails.push(currentEmployee as EmployeeDetailDto);
+        if (Object.keys(currentEmployee).length > 0 && currentEmployee.employeeId) {
+            // Create a new object to ensure all properties are included
+            const employeeDetail: EmployeeDetailDto = {
+                employeeId: currentEmployee.employeeId,
+                name: currentEmployee.name,
+                dob: currentEmployee.dob,
+                dor: currentEmployee.dor,
+                joinDate: currentEmployee.joinDate,
+                permDate: currentEmployee.permDate,
+                assignments: [...currentAssignments] // Create a new array with all assignments
+            };
+            employeeDetails.push(employeeDetail);
+            console.log('Adding final employee with assignments:', employeeDetail); // Debug log
         }
 
         return employeeDetails;

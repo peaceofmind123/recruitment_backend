@@ -223,7 +223,7 @@ export class EmployeeService {
             const row = data[i];
             if (!Array.isArray(row) || row.length === 0) continue;
 
-            const firstCell = row[0]?.toString() || '';
+            const firstCell = row[0]?.toString().trim() || '';
 
             // Extract employee ID
             const employeeIdMatch = firstCell.match(/Employee No:\s*(\d+)/);
@@ -252,7 +252,7 @@ export class EmployeeService {
             }
 
             // Check for Assignment Details section
-            if (firstCell.trim() === 'Assignment Details:') {
+            if (firstCell === 'Assignment Details:') {
                 isProcessingAssignments = true;
                 // Get headers from next row
                 if (i + 1 < data.length) {
@@ -267,7 +267,7 @@ export class EmployeeService {
             }
 
             // Check for end of assignments section
-            if (firstCell.trim() === 'Qualification Details:') {
+            if (firstCell === 'Qualification Details:') {
                 isProcessingAssignments = false;
                 if (currentEmployee.employeeId) {
                     // Create a new object to ensure all properties are included

@@ -11,14 +11,17 @@ import { Employee } from '../employee/entities/employee.entity';
 import { Qualification } from './entities/qualification.entity';
 import { QualificationController } from './qualification.controller';
 import { QualificationService } from './qualification.service';
+import { PostDetail } from './entities/post-detail.entity';
+import { PostDetailService } from './post-detail.service';
+import { PostDetailController } from './post-detail.controller';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([Vacancy, FiscalYear, Applicant, Employee, Qualification]),
+        TypeOrmModule.forFeature([Vacancy, FiscalYear, Applicant, Employee, Qualification, PostDetail]),
         ApplicantModule
     ],
-    controllers: [VacancyController, QualificationController],
-    providers: [VacancyService, ApplicantService, QualificationService],
+    controllers: [VacancyController, QualificationController, PostDetailController],
+    providers: [VacancyService, ApplicantService, QualificationService, PostDetailService],
     exports: [TypeOrmModule],
 })
 export class VacancyModule { } 

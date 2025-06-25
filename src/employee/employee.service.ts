@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Employee, Sex } from './entities/employee.entity';
 import { Qualification } from '../vacancy/entities/qualification.entity';
+import { EmployeeDetail } from './entities/employee-detail.entity';
+import { AssignmentDetail } from './entities/assignment-detail.entity';
 import * as XLSX from 'xlsx';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -30,6 +32,10 @@ export class EmployeeService {
         private employeeRepository: Repository<Employee>,
         @InjectRepository(Qualification)
         private qualificationRepository: Repository<Qualification>,
+        @InjectRepository(EmployeeDetail)
+        private employeeDetailRepository: Repository<EmployeeDetail>,
+        @InjectRepository(AssignmentDetail)
+        private assignmentDetailRepository: Repository<AssignmentDetail>,
     ) { }
 
     private parseDate(dateStr: string): Date | undefined {
@@ -411,5 +417,114 @@ export class EmployeeService {
         }
 
         return employeeDetails;
+    }
+
+    async uploadAndSaveEmployeeDetail(file: Express.Multer.File): Promise<EmployeeDetailDto[]> {
+        if (!file || !file.buffer) {
+            throw new Error('No file uploaded or file is empty');
+        }
+
+        // First extract the data using existing method
+        const employeeDetails = await this.uploadEmployeeDetail(file);
+
+        const savedEmployeeDetails: EmployeeDetailDto[] = [];
+
+        // Process each employee detail
+        for (const employeeDetailDto of employeeDetails) {
+            try {
+                // Check if employee detail already exists
+                let existingEmployeeDetail = await this.employeeDetailRepository.findOne({
+                    where: { employeeId: parseInt(employeeDetailDto.employeeId) },
+                    relations: ['assignments']
+                });
+
+                // Create or update employee detail
+                if (!existingEmployeeDetail) {
+                    existingEmployeeDetail = new EmployeeDetail();
+                    existingEmployeeDetail.employeeId = parseInt(employeeDetailDto.employeeId);
+                }
+
+                // Update employee detail fields
+                existingEmployeeDetail.name = employeeDetailDto.name || '';
+                existingEmployeeDetail.dob = employeeDetailDto.dob || '';
+                existingEmployeeDetail.dor = employeeDetailDto.dor || '';
+                existingEmployeeDetail.joinDate = employeeDetailDto.joinDate || '';
+                existingEmployeeDetail.permDate = employeeDetailDto.permDate || '';
+
+                // Save employee detail
+                const savedEmployeeDetail = await this.employeeDetailRepository.save(existingEmployeeDetail);
+
+                // Delete existing assignments for this employee to avoid duplicates
+                if (existingEmployeeDetail.assignments && existingEmployeeDetail.assignments.length > 0) {
+                    await this.assignmentDetailRepository.delete({ employeeId: savedEmployeeDetail.employeeId });
+                }
+
+                // Save assignments
+                const savedAssignments: AssignmentDetail[] = [];
+                if (employeeDetailDto.assignments && employeeDetailDto.assignments.length > 0) {
+                    for (const assignmentDto of employeeDetailDto.assignments) {
+                        const assignment = new AssignmentDetail();
+                        assignment.id = assignmentDto.id || crypto.randomUUID();
+                        assignment.employeeId = savedEmployeeDetail.employeeId;
+                        assignment.position = assignmentDto.position || '';
+                        assignment.jobs = assignmentDto.jobs || '';
+                        assignment.function = assignmentDto.function || '';
+                        assignment.empCategory = assignmentDto.empCategory || '';
+                        assignment.empType = assignmentDto.empType || '';
+                        assignment.workOffice = assignmentDto.workOffice || '';
+                        assignment.startDateBS = assignmentDto.startDateBS || '';
+                        assignment.endDateBS = assignmentDto.endDateBS || '';
+                        assignment.seniorityDateBS = assignmentDto.seniorityDateBS || '';
+                        assignment.level = assignmentDto.level || 0;
+                        assignment.permLevelDateBS = assignmentDto.permLevelDateBS || '';
+                        assignment.reasonForPosition = assignmentDto.reasonForPosition || '';
+                        assignment.startDate = assignmentDto.startDate;
+                        assignment.seniorityDate = assignmentDto.seniorityDate;
+
+                        const savedAssignment = await this.assignmentDetailRepository.save(assignment);
+                        savedAssignments.push(savedAssignment);
+                    }
+                }
+
+                // Convert back to DTO format for response
+                const responseDto: EmployeeDetailDto = {
+                    employeeId: savedEmployeeDetail.employeeId.toString(),
+                    name: savedEmployeeDetail.name,
+                    dob: savedEmployeeDetail.dob,
+                    dor: savedEmployeeDetail.dor,
+                    joinDate: savedEmployeeDetail.joinDate,
+                    permDate: savedEmployeeDetail.permDate,
+                    assignments: savedAssignments.map(assignment => ({
+                        id: assignment.id,
+                        employeeId: assignment.employeeId,
+                        position: assignment.position,
+                        jobs: assignment.jobs,
+                        function: assignment.function,
+                        empCategory: assignment.empCategory,
+                        empType: assignment.empType,
+                        workOffice: assignment.workOffice,
+                        startDateBS: assignment.startDateBS,
+                        endDateBS: assignment.endDateBS,
+                        seniorityDateBS: assignment.seniorityDateBS,
+                        level: assignment.level,
+                        permLevelDateBS: assignment.permLevelDateBS,
+                        reasonForPosition: assignment.reasonForPosition,
+                        startDate: assignment.startDate,
+                        seniorityDate: assignment.seniorityDate
+                    }))
+                };
+
+                savedEmployeeDetails.push(responseDto);
+
+                console.log(`Successfully saved employee detail for ID: ${savedEmployeeDetail.employeeId} with ${savedAssignments.length} assignments`);
+
+            } catch (error) {
+                console.error(`Error saving employee detail for ID: ${employeeDetailDto.employeeId}`, error);
+                // Continue with next employee instead of failing completely
+                continue;
+            }
+        }
+
+        return savedEmployeeDetails;
     }
 } 

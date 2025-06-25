@@ -87,4 +87,46 @@ export class EmployeeController {
             employeeCount: employeeDetails.length
         };
     }
+
+    @Post('upload-and-save-employee-detail')
+    @ApiOperation({ summary: 'Upload employee detail Excel file and save to database' })
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                file: {
+                    type: 'string',
+                    format: 'binary',
+                    description: 'Excel file containing employee details to be saved to database'
+                },
+            },
+        },
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Successfully processed and saved employee details to database',
+        type: EmployeeDetailResponseDto
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Invalid file format or missing file'
+    })
+    @UseInterceptors(FileInterceptor('file', {
+        fileFilter: (req, file, cb) => {
+            if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                file.mimetype === 'application/vnd.ms-excel') {
+                cb(null, true);
+            } else {
+                cb(new Error('Only Excel files are allowed!'), false);
+            }
+        },
+    }))
+    async uploadAndSaveEmployeeDetail(@UploadedFile() file: Express.Multer.File): Promise<EmployeeDetailResponseDto> {
+        const employeeDetails = await this.employeeService.uploadAndSaveEmployeeDetail(file);
+        return {
+            employeeDetails,
+            employeeCount: employeeDetails.length
+        };
+    }
 } 

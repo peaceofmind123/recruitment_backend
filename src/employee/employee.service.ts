@@ -11,6 +11,7 @@ import { In } from 'typeorm';
 import { EmployeeDetailDto } from './dto/employee-detail.dto';
 import { AssignmentDetailDto } from './dto/assignment-detail.dto';
 import * as crypto from 'crypto';
+import NepaliDate from 'nepali-datetime';
 
 interface ExcelRow {
     'EmpNo': number;
@@ -25,12 +26,44 @@ interface ExcelRow {
 
 @Injectable()
 export class EmployeeService {
+    private logFile: string;
+
     constructor(
         @InjectRepository(Employee)
         private employeeRepository: Repository<Employee>,
         @InjectRepository(Qualification)
         private qualificationRepository: Repository<Qualification>,
-    ) { }
+    ) {
+        // Create logs directory if it doesn't exist
+        const logsDir = path.join(process.cwd(), 'logs');
+        if (!fs.existsSync(logsDir)) {
+            fs.mkdirSync(logsDir, { recursive: true });
+        }
+
+        // Create log file with timestamp
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        this.logFile = path.join(logsDir, `employee-upload-${timestamp}.log`);
+
+        // Initialize log file
+        this.writeLog('=== EMPLOYEE UPLOAD DEBUG LOG START ===');
+    }
+
+    /**
+     * Write log message to file
+     */
+    private writeLog(message: string): void {
+        const timestamp = new Date().toISOString();
+        const logMessage = `[${timestamp}] ${message}\n`;
+
+        try {
+            fs.appendFileSync(this.logFile, logMessage);
+        } catch (error) {
+            console.error('Error writing to log file:', error);
+        }
+
+        // Also output to console for immediate feedback
+        console.log(message);
+    }
 
     private parseDate(dateStr: string): Date | undefined {
         if (!dateStr) return undefined;
@@ -204,6 +237,265 @@ export class EmployeeService {
         return `${day} ${monthMap[month]} ${fullYear}`;
     }
 
+    /**
+     * Parse BS date string to NepaliDate object
+     * Expected format: "2079/03/31" or "2079-03-31"
+     */
+    private parseBSDate(bsDateStr: string): NepaliDate | null {
+        if (!bsDateStr) return null;
+
+        // Handle different BS date formats
+        const dateMatch = bsDateStr.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+        if (!dateMatch) return null;
+
+        const [_, year, month, day] = dateMatch;
+        const bsYear = parseInt(year);
+        const bsMonth = parseInt(month);
+        const bsDay = parseInt(day);
+
+        try {
+            return new NepaliDate(bsYear, bsMonth - 1, bsDay);
+        } catch (error) {
+            console.error(`Invalid BS date: ${bsDateStr}`, error);
+            return null;
+        }
+    }
+
+    /**
+     * Validate if a BS date string is in correct format
+     */
+    private isValidBSDate(bsDateStr: string): boolean {
+        if (!bsDateStr) return false;
+
+        const dateMatch = bsDateStr.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+        if (!dateMatch) return false;
+
+        const [_, year, month, day] = dateMatch;
+        const bsYear = parseInt(year);
+        const bsMonth = parseInt(month);
+        const bsDay = parseInt(day);
+
+        // Basic validation
+        if (bsYear < 2000 || bsYear > 2100) return false;
+        if (bsMonth < 1 || bsMonth > 12) return false;
+        if (bsDay < 1 || bsDay > 32) return false;
+
+        try {
+            new NepaliDate(bsYear, bsMonth - 1, bsDay);
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    /**
+     * Format NepaliDate to BS date string
+     */
+    private formatBSDate(nepaliDate: NepaliDate): string {
+        try {
+            return nepaliDate.format('YYYY-MM-DD');
+        } catch (error) {
+            console.error('Error formatting BS date:', error);
+            return '';
+        }
+    }
+
+    /**
+     * Calculate days between two BS dates using NepaliDate
+     */
+    private calculateDaysBetweenBSDates(startDateBS: string, endDateBS: string): number {
+        const startDate = this.parseBSDate(startDateBS);
+        const endDate = this.parseBSDate(endDateBS);
+
+        if (!startDate || !endDate) return 0;
+
+        try {
+            // Convert NepaliDate to JavaScript Date for calculation
+            const startDateAD = startDate.getDateObject();
+            const endDateAD = endDate.getDateObject();
+
+            const timeDiff = endDateAD.getTime() - startDateAD.getTime();
+            return Math.ceil(timeDiff / (1000 * 3600 * 24));
+        } catch (error) {
+            console.error('Error calculating days between BS dates:', error);
+            return 0;
+        }
+    }
+
+    /**
+     * Get geographical marks for work office (placeholder implementation)
+     * For now, return 1 as specified in the requirements
+     */
+    private getGeographicalMarks(workOffice: string): number {
+        // TODO: Implement actual geographical marks logic
+        // For now, return 1 as specified in the requirements
+        return 1;
+    }
+
+    /**
+     * Calculate marks for old system (before 2079/03/31)
+     */
+    private marksAccOld(numDays: number, presentDays: number, workOffice: string, previousWorkOffice?: string): number {
+        if (presentDays < 90) {
+            // Use previous row's work office geographical marks
+            const geoMarks = previousWorkOffice ? this.getGeographicalMarks(previousWorkOffice) : this.getGeographicalMarks(workOffice);
+            return geoMarks * numDays / 365;
+        } else {
+            // Use current row's work office geographical marks
+            return this.getGeographicalMarks(workOffice) * numDays / 365;
+        }
+    }
+
+    /**
+     * Calculate marks for new system (after 2079/03/31)
+     */
+    private marksAccNew(numDays: number, presentDays: number, workOffice: string): number {
+        if (presentDays < 233) {
+            return numDays * 1.75 / 365;
+        } else {
+            return numDays * this.getGeographicalMarks(workOffice) / 365;
+        }
+    }
+
+    /**
+     * Calculate geographical marks for an assignment
+     */
+    private calculateGeographicalMarks(assignment: AssignmentDetailDto, previousAssignment?: AssignmentDetailDto): {
+        totalGeographicalMarks: number;
+        numDaysOld: number;
+        numDaysNew: number;
+        totalNumDays: number;
+    } {
+        this.writeLog(`Calculating geographical marks for assignment ${assignment.id}:`);
+        this.writeLog(`  startDateBS: ${assignment.startDateBS}`);
+        this.writeLog(`  endDateBS: ${assignment.endDateBS}`);
+        this.writeLog(`  workOffice: ${assignment.workOffice}`);
+
+        if (!assignment.startDateBS || !assignment.endDateBS) {
+            this.writeLog('  Missing startDateBS or endDateBS, returning 0 marks');
+            return {
+                totalGeographicalMarks: 0,
+                numDaysOld: 0,
+                numDaysNew: 0,
+                totalNumDays: 0
+            };
+        }
+
+        // Validate BS dates
+        if (!this.isValidBSDate(assignment.startDateBS) || !this.isValidBSDate(assignment.endDateBS)) {
+            this.writeLog(`Invalid BS date format for assignment ${assignment.id}: startDateBS=${assignment.startDateBS}, endDateBS=${assignment.endDateBS}`);
+            return {
+                totalGeographicalMarks: 0,
+                numDaysOld: 0,
+                numDaysNew: 0,
+                totalNumDays: 0
+            };
+        }
+
+        // Calculate total number of days
+        const totalNumDays = this.calculateDaysBetweenBSDates(assignment.startDateBS, assignment.endDateBS);
+        this.writeLog(`  totalNumDays: ${totalNumDays}`);
+
+        // Calculate days in old system (before 2079/03/31)
+        let numDaysOld = 0;
+        let numDaysNew = 0;
+
+        const cutoffDate = '2079/03/31';
+        const startDate = this.parseBSDate(assignment.startDateBS);
+        const endDate = this.parseBSDate(assignment.endDateBS);
+        const cutoffDateBS = this.parseBSDate(cutoffDate);
+
+        if (startDate && endDate && cutoffDateBS) {
+            try {
+                // Convert to JavaScript dates for comparison
+                const startDateAD = startDate.getDateObject();
+                const endDateAD = endDate.getDateObject();
+                const cutoffDateAD = cutoffDateBS.getDateObject();
+
+                this.writeLog(`  startDateAD: ${startDateAD.toISOString()}`);
+                this.writeLog(`  endDateAD: ${endDateAD.toISOString()}`);
+                this.writeLog(`  cutoffDateAD: ${cutoffDateAD.toISOString()}`);
+
+                // If assignment starts before cutoff and ends after cutoff
+                if (startDateAD < cutoffDateAD && endDateAD > cutoffDateAD) {
+                    numDaysOld = this.calculateDaysBetweenBSDates(assignment.startDateBS, cutoffDate);
+                    numDaysNew = this.calculateDaysBetweenBSDates(cutoffDate, assignment.endDateBS);
+                    this.writeLog(`  Assignment spans cutoff date: numDaysOld=${numDaysOld}, numDaysNew=${numDaysNew}`);
+                }
+                // If assignment is entirely before cutoff
+                else if (endDateAD <= cutoffDateAD) {
+                    numDaysOld = totalNumDays;
+                    numDaysNew = 0;
+                    this.writeLog(`  Assignment entirely before cutoff: numDaysOld=${numDaysOld}, numDaysNew=${numDaysNew}`);
+                }
+                // If assignment is entirely after cutoff
+                else if (startDateAD >= cutoffDateAD) {
+                    numDaysOld = 0;
+                    numDaysNew = totalNumDays;
+                    this.writeLog(`  Assignment entirely after cutoff: numDaysOld=${numDaysOld}, numDaysNew=${numDaysNew}`);
+                }
+            } catch (error) {
+                this.writeLog(`Error processing date comparison: ${error}`);
+                // Fallback to simple calculation
+                numDaysOld = this.calculateDaysBetweenBSDates(assignment.startDateBS, cutoffDate);
+                numDaysNew = this.calculateDaysBetweenBSDates(cutoffDate, assignment.endDateBS);
+            }
+        }
+
+        // Calculate present days for the assignment
+        const presentDays = totalNumDays;
+
+        let totalGeographicalMarks = 0;
+
+        // Apply the updated calculation logic based on the specification
+        if (startDate && endDate && cutoffDateBS) {
+            try {
+                const startDateAD = startDate.getDateObject();
+                const endDateAD = endDate.getDateObject();
+                const cutoffDateAD = cutoffDateBS.getDateObject();
+
+                // If assignment spans the cutoff date (starts before and ends after)
+                if (startDateAD < cutoffDateAD && endDateAD > cutoffDateAD) {
+                    // Use marksAccNew(numDaysNew) + marksAccOld(numDaysOld)
+                    const marksOld = this.marksAccOld(
+                        Math.max(0, numDaysOld),
+                        presentDays,
+                        assignment.workOffice,
+                        previousAssignment?.workOffice
+                    );
+                    const marksNew = this.marksAccNew(
+                        Math.max(0, numDaysNew),
+                        presentDays,
+                        assignment.workOffice
+                    );
+                    totalGeographicalMarks = marksOld + marksNew;
+                    this.writeLog(`  Spans cutoff: marksOld=${marksOld}, marksNew=${marksNew}, total=${totalGeographicalMarks}`);
+                } else {
+                    // If assignment is entirely before or after cutoff date
+                    // Use marksAccNew(totalNumDays)
+                    totalGeographicalMarks = this.marksAccNew(totalNumDays, presentDays, assignment.workOffice);
+                    this.writeLog(`  Before/after cutoff: marksNew=${totalGeographicalMarks}`);
+                }
+            } catch (error) {
+                this.writeLog(`Error in geographical marks calculation: ${error}`);
+                // Fallback to simple calculation
+                totalGeographicalMarks = this.marksAccNew(totalNumDays, presentDays, assignment.workOffice);
+            }
+        } else {
+            // Fallback if date parsing fails
+            totalGeographicalMarks = this.marksAccNew(totalNumDays, presentDays, assignment.workOffice);
+        }
+
+        this.writeLog(`  Final result: totalGeographicalMarks=${totalGeographicalMarks}`);
+
+        return {
+            totalGeographicalMarks,
+            numDaysOld: Math.max(0, numDaysOld),
+            numDaysNew: Math.max(0, numDaysNew),
+            totalNumDays
+        };
+    }
+
     async uploadEmployeeDetail(file: Express.Multer.File): Promise<EmployeeDetailDto[]> {
         if (!file || !file.buffer) {
             throw new Error('No file uploaded or file is empty');
@@ -212,6 +504,14 @@ export class EmployeeService {
         const workbook = XLSX.read(file.buffer, { type: 'buffer' });
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        this.writeLog('=== EXCEL DATA DEBUG ===');
+        this.writeLog(`Sheet names: ${JSON.stringify(workbook.SheetNames)}`);
+        this.writeLog('First 10 rows of data:');
+        for (let i = 0; i < Math.min(10, data.length); i++) {
+            this.writeLog(`Row ${i}: ${JSON.stringify(data[i])}`);
+        }
+        this.writeLog('=== END EXCEL DATA DEBUG ===');
 
         const employeeDetails: EmployeeDetailDto[] = [];
         let currentEmployee: Partial<EmployeeDetailDto> = {};
@@ -228,7 +528,11 @@ export class EmployeeService {
             // Extract employee ID
             const employeeIdMatch = firstCell.match(/Employee No:\s*(\d+)/);
             if (employeeIdMatch) {
+                this.writeLog(`Found employee ID: ${employeeIdMatch[1]}`);
                 if (Object.keys(currentEmployee).length > 0 && currentEmployee.employeeId) {
+                    // Calculate geographical marks for all assignments
+                    this.calculateGeographicalMarksForAssignments(currentAssignments);
+
                     // Create a new object to ensure all properties are included
                     const employeeDetail: EmployeeDetailDto = {
                         employeeId: currentEmployee.employeeId,
@@ -240,7 +544,7 @@ export class EmployeeService {
                         assignments: [...currentAssignments] // Create a new array with all assignments
                     };
                     employeeDetails.push(employeeDetail);
-                    console.log('Adding employee with assignments:', employeeDetail); // Debug log
+                    this.writeLog(`Adding employee with assignments: ${JSON.stringify(employeeDetail)}`);
                 }
                 currentEmployee = {
                     employeeId: employeeIdMatch[1],
@@ -253,13 +557,14 @@ export class EmployeeService {
 
             // Check for Assignment Details section
             if (firstCell === 'Assignment Details:') {
+                this.writeLog('Found Assignment Details section');
                 isProcessingAssignments = true;
                 // Get headers from next row
                 if (i + 1 < data.length) {
                     const headerRow = data[i + 1];
                     if (Array.isArray(headerRow)) {
                         assignmentHeaders = headerRow.map(h => h?.toString() || '');
-                        console.log('Assignment Headers:', assignmentHeaders); // Debug log
+                        this.writeLog(`Assignment Headers: ${JSON.stringify(assignmentHeaders)}`);
                     }
                 }
                 i += 2; // Skip header row
@@ -268,8 +573,12 @@ export class EmployeeService {
 
             // Check for end of assignments section
             if (firstCell === 'Qualification Details:') {
+                this.writeLog('Found Qualification Details section - ending assignments');
                 isProcessingAssignments = false;
                 if (currentEmployee.employeeId) {
+                    // Calculate geographical marks for all assignments
+                    this.calculateGeographicalMarksForAssignments(currentAssignments);
+
                     // Create a new object to ensure all properties are included
                     const employeeDetail: EmployeeDetailDto = {
                         employeeId: currentEmployee.employeeId,
@@ -281,7 +590,7 @@ export class EmployeeService {
                         assignments: [...currentAssignments] // Create a new array with all assignments
                     };
                     employeeDetails.push(employeeDetail);
-                    console.log('Adding employee with assignments:', employeeDetail); // Debug log
+                    this.writeLog(`Adding employee with assignments: ${JSON.stringify(employeeDetail)}`);
                 }
                 currentAssignments = [];
                 continue;
@@ -289,8 +598,12 @@ export class EmployeeService {
 
             // Process assignment data
             if (isProcessingAssignments && row.length > 0) {
+                this.writeLog(`Processing assignment row ${i}: ${JSON.stringify(row)}`);
                 // Skip empty rows or rows without enough data
-                if (row.every(cell => !cell)) continue;
+                if (row.every(cell => !cell)) {
+                    this.writeLog('Skipping empty row');
+                    continue;
+                }
 
                 const assignment: Partial<AssignmentDetailDto> = {
                     id: crypto.randomUUID(),
@@ -299,8 +612,13 @@ export class EmployeeService {
 
                 // Map the columns based on headers
                 assignmentHeaders.forEach((header, index) => {
-                    const value = row[index]?.toString() || '';
-                    if (!value) return; // Skip empty values
+                    const rawValue = row[index];
+                    const value = rawValue?.toString() || '';
+
+                    this.writeLog(`Processing header "${header}" at index ${index}: rawValue=${rawValue}, value="${value}"`);
+
+                    // Don't skip empty values for date fields as they might be Excel date numbers
+                    if (!value && !this.isExcelDateNumber(rawValue)) return;
 
                     switch (header) {
                         case 'Position':
@@ -322,19 +640,47 @@ export class EmployeeService {
                             assignment.workOffice = value;
                             break;
                         case 'Start Date BS':
-                            assignment.startDateBS = value;
+                            // Check if it's an Excel date number and convert if needed
+                            if (this.isExcelDateNumber(rawValue)) {
+                                assignment.startDateBS = this.convertExcelDateToBS(rawValue);
+                                this.writeLog(`Converted Start Date BS: ${rawValue} -> ${assignment.startDateBS}`);
+                            } else {
+                                assignment.startDateBS = value;
+                                this.writeLog(`Using Start Date BS as-is: ${value}`);
+                            }
                             break;
                         case 'End Date BS':
-                            assignment.endDateBS = value;
+                            // Check if it's an Excel date number and convert if needed
+                            if (this.isExcelDateNumber(rawValue)) {
+                                assignment.endDateBS = this.convertExcelDateToBS(rawValue);
+                                this.writeLog(`Converted End Date BS: ${rawValue} -> ${assignment.endDateBS}`);
+                            } else {
+                                assignment.endDateBS = value;
+                                this.writeLog(`Using End Date BS as-is: ${value}`);
+                            }
                             break;
                         case 'Seniority Date BS':
-                            assignment.seniorityDateBS = value;
+                            // Check if it's an Excel date number and convert if needed
+                            if (this.isExcelDateNumber(rawValue)) {
+                                assignment.seniorityDateBS = this.convertExcelDateToBS(rawValue);
+                                this.writeLog(`Converted Seniority Date BS: ${rawValue} -> ${assignment.seniorityDateBS}`);
+                            } else {
+                                assignment.seniorityDateBS = value;
+                                this.writeLog(`Using Seniority Date BS as-is: ${value}`);
+                            }
                             break;
                         case 'Level':
                             assignment.level = parseInt(value) || 0;
                             break;
                         case 'Perm. Level Date BS':
-                            assignment.permLevelDateBS = value;
+                            // Check if it's an Excel date number and convert if needed
+                            if (this.isExcelDateNumber(rawValue)) {
+                                assignment.permLevelDateBS = this.convertExcelDateToBS(rawValue);
+                                this.writeLog(`Converted Perm Level Date BS: ${rawValue} -> ${assignment.permLevelDateBS}`);
+                            } else {
+                                assignment.permLevelDateBS = value;
+                                this.writeLog(`Using Perm Level Date BS as-is: ${value}`);
+                            }
                             break;
                         case 'Reason':
                             assignment.reasonForPosition = value;
@@ -352,8 +698,10 @@ export class EmployeeService {
 
                 // Only add assignment if it has more than just id and employeeId
                 if (Object.keys(assignment).length > 2) {
-                    console.log('Adding assignment:', assignment); // Debug log
+                    this.writeLog(`Adding assignment: ${JSON.stringify(assignment)}`);
                     currentAssignments.push(assignment as AssignmentDetailDto);
+                } else {
+                    this.writeLog(`Skipping assignment - not enough data: ${JSON.stringify(assignment)}`);
                 }
                 continue;
             }
@@ -396,6 +744,9 @@ export class EmployeeService {
 
         // Add the last employee if exists
         if (Object.keys(currentEmployee).length > 0 && currentEmployee.employeeId) {
+            // Calculate geographical marks for all assignments
+            this.calculateGeographicalMarksForAssignments(currentAssignments);
+
             // Create a new object to ensure all properties are included
             const employeeDetail: EmployeeDetailDto = {
                 employeeId: currentEmployee.employeeId,
@@ -407,9 +758,91 @@ export class EmployeeService {
                 assignments: [...currentAssignments] // Create a new array with all assignments
             };
             employeeDetails.push(employeeDetail);
-            console.log('Adding final employee with assignments:', employeeDetail); // Debug log
+            this.writeLog(`Adding final employee with assignments: ${JSON.stringify(employeeDetail)}`);
         }
 
+        this.writeLog('=== EMPLOYEE UPLOAD DEBUG LOG END ===');
         return employeeDetails;
+    }
+
+    /**
+     * Calculate geographical marks for all assignments of an employee
+     */
+    private calculateGeographicalMarksForAssignments(assignments: AssignmentDetailDto[]): void {
+        for (let i = 0; i < assignments.length; i++) {
+            const assignment = assignments[i];
+            const previousAssignment = i > 0 ? assignments[i - 1] : undefined;
+
+            const geoMarks = this.calculateGeographicalMarks(assignment, previousAssignment);
+
+            // Update assignment with calculated values
+            assignment.totalGeographicalMarks = geoMarks.totalGeographicalMarks;
+            assignment.numDaysOld = geoMarks.numDaysOld;
+            assignment.numDaysNew = geoMarks.numDaysNew;
+            assignment.totalNumDays = geoMarks.totalNumDays;
+
+            this.writeLog(`Calculated geographical marks for assignment ${assignment.id}: ${JSON.stringify(geoMarks)}`);
+        }
+    }
+
+    /**
+     * Convert Excel date number to BS date string
+     * Excel stores dates as serial numbers starting from 1900-01-01
+     * We need to convert this to a proper date and then to BS format
+     */
+    private convertExcelDateToBS(excelDateNumber: string | number): string {
+        if (!excelDateNumber) return '';
+
+        const excelNum = typeof excelDateNumber === 'string' ? parseFloat(excelDateNumber) : excelDateNumber;
+
+        if (isNaN(excelNum) || excelNum <= 0) return '';
+
+        try {
+            // Excel date numbers represent days since 1900-01-01
+            // Excel incorrectly treats 1900 as a leap year, so we need to adjust
+            // For dates after 1900-02-28, subtract 1 day
+            let adjustedDays = excelNum - 1; // Excel day 1 is 1900-01-01
+
+            // Excel's leap year bug: it treats 1900 as a leap year when it's not
+            // So for dates after 1900-02-28, we need to subtract 1 more day
+            if (excelNum > 59) { // 1900-02-28 is day 59 in Excel
+                adjustedDays -= 1;
+            }
+
+            // Convert to JavaScript Date
+            const excelEpoch = new Date(1900, 0, 1); // 1900-01-01
+            const targetDate = new Date(excelEpoch.getTime() + adjustedDays * 24 * 60 * 60 * 1000);
+
+            // Convert to NepaliDate
+            const nepaliDate = new NepaliDate(targetDate);
+
+            // Format as BS date string
+            const bsDateString = nepaliDate.format('YYYY-MM-DD');
+
+            this.writeLog(`Excel date ${excelDateNumber} converted to BS date: ${bsDateString} (AD: ${targetDate.toISOString()})`);
+
+            return bsDateString;
+        } catch (error) {
+            this.writeLog(`Error converting Excel date ${excelDateNumber} to BS date: ${error}`);
+            return '';
+        }
+    }
+
+    /**
+     * Check if a value is an Excel date number
+     */
+    private isExcelDateNumber(value: any): boolean {
+        if (value === null || value === undefined) return false;
+
+        const num = typeof value === 'string' ? parseFloat(value) : value;
+        const isNumber = !isNaN(num) && typeof num === 'number';
+
+        // Excel date numbers are typically between 1 and 100000
+        // But we need to be more specific for BS dates (which would be around 2000-2100 AD)
+        const isInExcelDateRange = isNumber && num > 1 && num < 100000;
+
+        this.writeLog(`isExcelDateNumber check: value=${value}, num=${num}, isNumber=${isNumber}, isInExcelDateRange=${isInExcelDateRange}`);
+
+        return isInExcelDateRange;
     }
 } 

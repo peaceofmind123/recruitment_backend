@@ -54,4 +54,16 @@ export class AssignmentDetail {
     @ManyToOne(() => EmployeeDetail, employee => employee.assignments)
     @JoinColumn({ name: 'employeeId' })
     employee: EmployeeDetail;
+
+    @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+    totalGeographicalMarks: number;
+
+    @Column({ type: 'int', nullable: true })
+    numDaysOld: number;
+
+    @Column({ type: 'int', nullable: true })
+    numDaysNew: number;
+
+    @Column({ type: 'int', nullable: true })
+    totalNumDays: number;
 } 

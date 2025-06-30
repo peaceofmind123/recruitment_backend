@@ -48,4 +48,16 @@ export class AssignmentDetailDto {
 
     @ApiProperty({ description: 'Employee ID' })
     employeeId: number;
+
+    @ApiProperty({ description: 'Total geographical marks calculated for this assignment', required: false })
+    totalGeographicalMarks?: number;
+
+    @ApiProperty({ description: 'Number of days in old system (before 2079/03/31)', required: false })
+    numDaysOld?: number;
+
+    @ApiProperty({ description: 'Number of days in new system (after 2079/03/31)', required: false })
+    numDaysNew?: number;
+
+    @ApiProperty({ description: 'Total number of days for this assignment', required: false })
+    totalNumDays?: number;
 } 

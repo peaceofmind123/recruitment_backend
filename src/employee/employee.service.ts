@@ -11,7 +11,7 @@ import { In } from 'typeorm';
 import { EmployeeDetailDto } from './dto/employee-detail.dto';
 import { AssignmentDetailDto } from './dto/assignment-detail.dto';
 import * as crypto from 'crypto';
-import NepaliDate from 'nepali-datetime';
+const NepaliDate = require('nepali-datetime');
 
 interface ExcelRow {
     'EmpNo': number;
@@ -241,17 +241,24 @@ export class EmployeeService {
      * Parse BS date string to NepaliDate object
      * Expected format: "2079/03/31" or "2079-03-31"
      */
-    private parseBSDate(bsDateStr: string): NepaliDate | null {
+    private parseBSDate(bsDateStr: string): any | null {
         if (!bsDateStr) return null;
 
-        // Handle different BS date formats
-        const dateMatch = bsDateStr.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
-        if (!dateMatch) return null;
+        // Parse the BS date string
+        const parts = bsDateStr.split(/[\/\-]/);
+        if (parts.length !== 3) {
+            console.error(`Invalid BS date format: ${bsDateStr}`);
+            return null;
+        }
 
-        const [_, year, month, day] = dateMatch;
-        const bsYear = parseInt(year);
-        const bsMonth = parseInt(month);
-        const bsDay = parseInt(day);
+        const bsYear = parseInt(parts[0]);
+        const bsMonth = parseInt(parts[1]);
+        const bsDay = parseInt(parts[2]);
+
+        if (isNaN(bsYear) || isNaN(bsMonth) || isNaN(bsDay)) {
+            console.error(`Invalid BS date components: ${bsDateStr}`);
+            return null;
+        }
 
         try {
             return new NepaliDate(bsYear, bsMonth - 1, bsDay);
@@ -262,23 +269,24 @@ export class EmployeeService {
     }
 
     /**
-     * Validate if a BS date string is in correct format
+     * Validate if a BS date string is valid
      */
     private isValidBSDate(bsDateStr: string): boolean {
         if (!bsDateStr) return false;
 
-        const dateMatch = bsDateStr.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
-        if (!dateMatch) return false;
+        // Parse the BS date string
+        const parts = bsDateStr.split(/[\/\-]/);
+        if (parts.length !== 3) {
+            return false;
+        }
 
-        const [_, year, month, day] = dateMatch;
-        const bsYear = parseInt(year);
-        const bsMonth = parseInt(month);
-        const bsDay = parseInt(day);
+        const bsYear = parseInt(parts[0]);
+        const bsMonth = parseInt(parts[1]);
+        const bsDay = parseInt(parts[2]);
 
-        // Basic validation
-        if (bsYear < 2000 || bsYear > 2100) return false;
-        if (bsMonth < 1 || bsMonth > 12) return false;
-        if (bsDay < 1 || bsDay > 32) return false;
+        if (isNaN(bsYear) || isNaN(bsMonth) || isNaN(bsDay)) {
+            return false;
+        }
 
         try {
             new NepaliDate(bsYear, bsMonth - 1, bsDay);
@@ -291,7 +299,7 @@ export class EmployeeService {
     /**
      * Format NepaliDate to BS date string
      */
-    private formatBSDate(nepaliDate: NepaliDate): string {
+    private formatBSDate(nepaliDate: any): string {
         try {
             return nepaliDate.format('YYYY-MM-DD');
         } catch (error) {
@@ -787,8 +795,8 @@ export class EmployeeService {
 
     /**
      * Convert Excel date number to BS date string
-     * Excel stores dates as serial numbers starting from 1900-01-01
-     * We need to convert this to a proper date and then to BS format
+     * For BS dates stored as Excel serial numbers, we need to treat the converted date as BS directly
+     * Example: Excel number 57570 converts to 2057-08-13, which should be treated as BS 2057-08-13
      */
     private convertExcelDateToBS(excelDateNumber: string | number): string {
         if (!excelDateNumber) return '';
@@ -813,13 +821,16 @@ export class EmployeeService {
             const excelEpoch = new Date(1900, 0, 1); // 1900-01-01
             const targetDate = new Date(excelEpoch.getTime() + adjustedDays * 24 * 60 * 60 * 1000);
 
-            // Convert to NepaliDate
-            const nepaliDate = new NepaliDate(targetDate);
+            // For BS dates, we treat the converted date as BS directly
+            // Extract year, month, and day from the converted date
+            const year = targetDate.getFullYear();
+            const month = targetDate.getMonth() + 1; // getMonth() returns 0-11
+            const day = targetDate.getDate();
 
-            // Format as BS date string
-            const bsDateString = nepaliDate.format('YYYY-MM-DD');
+            // Format as BS date string (YYYY-MM-DD)
+            const bsDateString = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
 
-            this.writeLog(`Excel date ${excelDateNumber} converted to BS date: ${bsDateString} (AD: ${targetDate.toISOString()})`);
+            this.writeLog(`Excel date ${excelDateNumber} converted to BS date: ${bsDateString} (treating as BS directly)`);
 
             return bsDateString;
         } catch (error) {
@@ -838,8 +849,9 @@ export class EmployeeService {
         const isNumber = !isNaN(num) && typeof num === 'number';
 
         // Excel date numbers are typically between 1 and 100000
-        // But we need to be more specific for BS dates (which would be around 2000-2100 AD)
-        const isInExcelDateRange = isNumber && num > 1 && num < 100000;
+        // For BS dates, we're looking for numbers that would convert to years around 2000-2100
+        // Excel number 36526 converts to 2000-01-01, and 73050 converts to 2100-01-01
+        const isInExcelDateRange = isNumber && num >= 36526 && num <= 73050;
 
         this.writeLog(`isExcelDateNumber check: value=${value}, num=${num}, isNumber=${isNumber}, isInExcelDateRange=${isInExcelDateRange}`);
 

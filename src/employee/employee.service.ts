@@ -11,6 +11,9 @@ import { In } from 'typeorm';
 import { EmployeeDetailDto } from './dto/employee-detail.dto';
 import { AssignmentDetailDto } from './dto/assignment-detail.dto';
 import * as crypto from 'crypto';
+import { Office } from '../common/entities/office.entity';
+import { District } from '../common/entities/district.entity';
+import { CategoryMarks } from '../common/entities/category-marks.entity';
 const NepaliDate = require('nepali-datetime');
 
 interface ExcelRow {
@@ -33,6 +36,12 @@ export class EmployeeService {
         private employeeRepository: Repository<Employee>,
         @InjectRepository(Qualification)
         private qualificationRepository: Repository<Qualification>,
+        @InjectRepository(Office)
+        private officeRepository: Repository<Office>,
+        @InjectRepository(District)
+        private districtRepository: Repository<District>,
+        @InjectRepository(CategoryMarks)
+        private categoryMarksRepository: Repository<CategoryMarks>,
     ) {
         // Create logs directory if it doesn't exist
         const logsDir = path.join(process.cwd(), 'logs');
@@ -239,7 +248,7 @@ export class EmployeeService {
 
     /**
      * Parse BS date string to NepaliDate object
-     * Expected format: "2079/03/31" or "2079-03-31"
+     * Expected format: "2079/03/31" or "2079-03/31"
      */
     private parseBSDate(bsDateStr: string): any | null {
         if (!bsDateStr) return null;
@@ -331,49 +340,39 @@ export class EmployeeService {
     }
 
     /**
-     * Get geographical marks for work office (placeholder implementation)
-     * For now, return 1 as specified in the requirements
-     */
-    private getGeographicalMarks(workOffice: string): number {
-        // TODO: Implement actual geographical marks logic
-        // For now, return 1 as specified in the requirements
-        return 1;
-    }
-
-    /**
      * Calculate marks for old system (before 2079/03/31)
      */
-    private marksAccOld(numDays: number, presentDays: number, workOffice: string, previousWorkOffice?: string): number {
+    private async marksAccOld(numDays: number, presentDays: number, workOffice: string, gender: 'male' | 'female' | null = null, previousWorkOffice?: string): Promise<number> {
         if (presentDays < 90) {
-            // Use previous row's work office geographical marks
-            const geoMarks = previousWorkOffice ? this.getGeographicalMarks(previousWorkOffice) : this.getGeographicalMarks(workOffice);
+            const geoMarks = previousWorkOffice ? await this.getGeographicalMarks(previousWorkOffice, gender, 'old') : await this.getGeographicalMarks(workOffice, gender, 'old');
             return geoMarks * numDays / 365;
         } else {
-            // Use current row's work office geographical marks
-            return this.getGeographicalMarks(workOffice) * numDays / 365;
+            const geoMarks = await this.getGeographicalMarks(workOffice, gender, 'old');
+            return geoMarks * numDays / 365;
         }
     }
 
     /**
      * Calculate marks for new system (after 2079/03/31)
      */
-    private marksAccNew(numDays: number, presentDays: number, workOffice: string): number {
+    private async marksAccNew(numDays: number, presentDays: number, workOffice: string, gender: 'male' | 'female' | null = null): Promise<number> {
         if (presentDays < 233) {
             return numDays * 1.75 / 365;
         } else {
-            return numDays * this.getGeographicalMarks(workOffice) / 365;
+            const geoMarks = await this.getGeographicalMarks(workOffice, gender, 'new');
+            return numDays * geoMarks / 365;
         }
     }
 
     /**
      * Calculate geographical marks for an assignment
      */
-    private calculateGeographicalMarks(assignment: AssignmentDetailDto, previousAssignment?: AssignmentDetailDto): {
+    private async calculateGeographicalMarks(assignment: AssignmentDetailDto, gender: 'male' | 'female' | null, previousAssignment?: AssignmentDetailDto): Promise<{
         totalGeographicalMarks: number;
         numDaysOld: number;
         numDaysNew: number;
         totalNumDays: number;
-    } {
+    }> {
         this.writeLog(`Calculating geographical marks for assignment ${assignment.id}:`);
         this.writeLog(`  startDateBS: ${assignment.startDateBS}`);
         this.writeLog(`  endDateBS: ${assignment.endDateBS}`);
@@ -465,33 +464,35 @@ export class EmployeeService {
                 // If assignment spans the cutoff date (starts before and ends after)
                 if (startDateAD < cutoffDateAD && endDateAD > cutoffDateAD) {
                     // Use marksAccNew(numDaysNew) + marksAccOld(numDaysOld)
-                    const marksOld = this.marksAccOld(
+                    const marksOld = await this.marksAccOld(
                         Math.max(0, numDaysOld),
                         presentDays,
                         assignment.workOffice,
-                        previousAssignment?.workOffice
+                        gender,
+                        previousAssignment?.workOffice,
                     );
-                    const marksNew = this.marksAccNew(
+                    const marksNew = await this.marksAccNew(
                         Math.max(0, numDaysNew),
                         presentDays,
-                        assignment.workOffice
+                        assignment.workOffice,
+                        gender
                     );
                     totalGeographicalMarks = marksOld + marksNew;
                     this.writeLog(`  Spans cutoff: marksOld=${marksOld}, marksNew=${marksNew}, total=${totalGeographicalMarks}`);
                 } else {
                     // If assignment is entirely before or after cutoff date
                     // Use marksAccNew(totalNumDays)
-                    totalGeographicalMarks = this.marksAccNew(totalNumDays, presentDays, assignment.workOffice);
+                    totalGeographicalMarks = await this.marksAccNew(totalNumDays, presentDays, assignment.workOffice, gender);
                     this.writeLog(`  Before/after cutoff: marksNew=${totalGeographicalMarks}`);
                 }
             } catch (error) {
                 this.writeLog(`Error in geographical marks calculation: ${error}`);
                 // Fallback to simple calculation
-                totalGeographicalMarks = this.marksAccNew(totalNumDays, presentDays, assignment.workOffice);
+                totalGeographicalMarks = await this.marksAccNew(totalNumDays, presentDays, assignment.workOffice, gender);
             }
         } else {
             // Fallback if date parsing fails
-            totalGeographicalMarks = this.marksAccNew(totalNumDays, presentDays, assignment.workOffice);
+            totalGeographicalMarks = await this.marksAccNew(totalNumDays, presentDays, assignment.workOffice, gender);
         }
 
         this.writeLog(`  Final result: totalGeographicalMarks=${totalGeographicalMarks}`);
@@ -526,6 +527,7 @@ export class EmployeeService {
         let isProcessingAssignments = false;
         let assignmentHeaders: string[] = [];
         let currentAssignments: AssignmentDetailDto[] = [];
+        let currentEmployeeGender: 'male' | 'female' | null = null;
 
         for (let i = 0; i < data.length; i++) {
             const row = data[i];
@@ -539,7 +541,7 @@ export class EmployeeService {
                 this.writeLog(`Found employee ID: ${employeeIdMatch[1]}`);
                 if (Object.keys(currentEmployee).length > 0 && currentEmployee.employeeId) {
                     // Calculate geographical marks for all assignments
-                    this.calculateGeographicalMarksForAssignments(currentAssignments);
+                    await this.calculateGeographicalMarksForAssignmentsAsync(currentAssignments, currentEmployeeGender);
 
                     // Create a new object to ensure all properties are included
                     const employeeDetail: EmployeeDetailDto = {
@@ -585,7 +587,7 @@ export class EmployeeService {
                 isProcessingAssignments = false;
                 if (currentEmployee.employeeId) {
                     // Calculate geographical marks for all assignments
-                    this.calculateGeographicalMarksForAssignments(currentAssignments);
+                    await this.calculateGeographicalMarksForAssignmentsAsync(currentAssignments, currentEmployeeGender);
 
                     // Create a new object to ensure all properties are included
                     const employeeDetail: EmployeeDetailDto = {
@@ -748,12 +750,18 @@ export class EmployeeService {
                 currentEmployee.permDate = this.parseExcelDate(permDateMatch[1]);
                 continue;
             }
+
+            // Extract gender
+            const sexMatch = firstCell.match(/Sex:\s*([A-Za-z]+)/);
+            if (sexMatch) {
+                currentEmployeeGender = this.mapSexToGender(sexMatch[1]);
+            }
         }
 
         // Add the last employee if exists
         if (Object.keys(currentEmployee).length > 0 && currentEmployee.employeeId) {
             // Calculate geographical marks for all assignments
-            this.calculateGeographicalMarksForAssignments(currentAssignments);
+            await this.calculateGeographicalMarksForAssignmentsAsync(currentAssignments, currentEmployeeGender);
 
             // Create a new object to ensure all properties are included
             const employeeDetail: EmployeeDetailDto = {
@@ -771,26 +779,6 @@ export class EmployeeService {
 
         this.writeLog('=== EMPLOYEE UPLOAD DEBUG LOG END ===');
         return employeeDetails;
-    }
-
-    /**
-     * Calculate geographical marks for all assignments of an employee
-     */
-    private calculateGeographicalMarksForAssignments(assignments: AssignmentDetailDto[]): void {
-        for (let i = 0; i < assignments.length; i++) {
-            const assignment = assignments[i];
-            const previousAssignment = i > 0 ? assignments[i - 1] : undefined;
-
-            const geoMarks = this.calculateGeographicalMarks(assignment, previousAssignment);
-
-            // Update assignment with calculated values
-            assignment.totalGeographicalMarks = geoMarks.totalGeographicalMarks;
-            assignment.numDaysOld = geoMarks.numDaysOld;
-            assignment.numDaysNew = geoMarks.numDaysNew;
-            assignment.totalNumDays = geoMarks.totalNumDays;
-
-            this.writeLog(`Calculated geographical marks for assignment ${assignment.id}: ${JSON.stringify(geoMarks)}`);
-        }
     }
 
     /**
@@ -856,5 +844,44 @@ export class EmployeeService {
         this.writeLog(`isExcelDateNumber check: value=${value}, num=${num}, isNumber=${isNumber}, isInExcelDateRange=${isInExcelDateRange}`);
 
         return isInExcelDateRange;
+    }
+
+    public async calculateGeographicalMarksForAssignmentsAsync(assignments: AssignmentDetailDto[], gender: 'male' | 'female' | null): Promise<void> {
+        for (let i = 0; i < assignments.length; i++) {
+            const assignment = assignments[i];
+            const previousAssignment = i > 0 ? assignments[i - 1] : undefined;
+            const geoMarksResult = await this.calculateGeographicalMarks(assignment, gender, previousAssignment);
+            assignment.totalGeographicalMarks = geoMarksResult.totalGeographicalMarks;
+            assignment.numDaysOld = geoMarksResult.numDaysOld;
+            assignment.numDaysNew = geoMarksResult.numDaysNew;
+            assignment.totalNumDays = geoMarksResult.totalNumDays;
+        }
+    }
+
+    private async getGeographicalMarks(workOffice: string, gender: 'male' | 'female' | null = null, dateType: 'old' | 'new' = 'new'): Promise<number> {
+        // 1. Find the office to get the district
+        const office = await this.officeRepository.findOne({ where: { name: workOffice } });
+        if (!office) return 1; // fallback
+        // 2. Find the district to get the category
+        const district = await this.districtRepository.findOne({ where: { name: office.district } });
+        if (!district) return 1; // fallback
+        // 3. Find the marks for the category
+        let marks: CategoryMarks | undefined | null;
+        if (dateType === 'old') {
+            marks = await this.categoryMarksRepository.findOne({ where: { category: district.category, type: 'old', gender: gender ?? 'male' } });
+            if (!marks && gender === 'female') {
+                // fallback to male if not found for female
+                marks = await this.categoryMarksRepository.findOne({ where: { category: district.category, type: 'old', gender: 'male' } });
+            }
+        } else {
+            marks = await this.categoryMarksRepository.findOne({ where: { category: district.category, type: 'new' } });
+        }
+        return marks && typeof marks.marks === 'number' ? marks.marks : 1;
+    }
+
+    private mapSexToGender(sex: string): 'male' | 'female' | null {
+        if (sex === 'Male') return 'male';
+        if (sex === 'Female') return 'female';
+        return null;
     }
 } 

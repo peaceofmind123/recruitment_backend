@@ -6,9 +6,10 @@ import { EmployeeService } from './employee.service';
 import { Qualification } from '../vacancy/entities/qualification.entity';
 import { EmployeeDetail } from './entities/employee-detail.entity';
 import { AssignmentDetail } from './entities/assignment-detail.entity';
+import { CommonModule } from '../common/common.module';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Employee, Qualification, EmployeeDetail, AssignmentDetail])],
+    imports: [TypeOrmModule.forFeature([Employee, Qualification, EmployeeDetail, AssignmentDetail]), CommonModule],
     controllers: [EmployeeController],
     providers: [EmployeeService],
     exports: [TypeOrmModule],

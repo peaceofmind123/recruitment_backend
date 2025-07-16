@@ -13,4 +13,11 @@ export class EmployeeDetailResponseDto {
         type: Number
     })
     employeeCount: number;
+
+    @ApiProperty({
+        description: 'Sum of totalGeographicalMarks across all assignments for all employees',
+        type: Number,
+        required: false
+    })
+    totalGeographicalMarksSum?: number;
 } 

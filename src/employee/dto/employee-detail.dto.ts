@@ -26,4 +26,11 @@ export class EmployeeDetailDto {
         required: false
     })
     assignments?: AssignmentDetailDto[];
+
+    @ApiProperty({
+        description: 'Sum of totalGeographicalMarks across all assignments for this employee',
+        type: Number,
+        required: false
+    })
+    totalGeographicalMarksSum?: number;
 } 

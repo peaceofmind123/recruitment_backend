@@ -82,6 +82,12 @@ export class EmployeeController {
     }))
     async uploadEmployeeDetail(@UploadedFile() file: Express.Multer.File): Promise<EmployeeDetailResponseDto> {
         const employeeDetails = await this.employeeService.uploadEmployeeDetail(file);
+        // For each employee, sum totalGeographicalMarks across their assignments
+        employeeDetails.forEach(emp => {
+            emp.totalGeographicalMarksSum = (emp.assignments && Array.isArray(emp.assignments))
+                ? emp.assignments.reduce((sum, a) => sum + (a.totalGeographicalMarks || 0), 0)
+                : 0;
+        });
         return {
             employeeDetails,
             employeeCount: employeeDetails.length

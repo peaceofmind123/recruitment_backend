@@ -1,5 +1,6 @@
-import { Entity, Column, PrimaryColumn, ManyToMany, JoinTable } from 'typeorm';
+import { Entity, Column, PrimaryColumn, ManyToMany, JoinTable, OneToMany } from 'typeorm';
 import { Qualification } from '../../vacancy/entities/qualification.entity';
+import { AssignmentDetail } from './assignment-detail.entity';
 
 export enum Sex {
     M = 'M',
@@ -43,4 +44,7 @@ export class Employee {
         inverseJoinColumn: { name: 'qualification_qualification', referencedColumnName: 'qualification' }
     })
     qualifications: Qualification[];
+
+    @OneToMany(() => AssignmentDetail, assignment => assignment.employee)
+    assignments: AssignmentDetail[];
 } 

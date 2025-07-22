@@ -14,6 +14,7 @@ import * as crypto from 'crypto';
 import { Office } from '../common/entities/office.entity';
 import { District } from '../common/entities/district.entity';
 import { CategoryMarks } from '../common/entities/category-marks.entity';
+import { AssignmentDetail } from './entities/assignment-detail.entity';
 const NepaliDate = require('nepali-datetime');
 
 interface ExcelRow {
@@ -42,6 +43,8 @@ export class EmployeeService {
         private districtRepository: Repository<District>,
         @InjectRepository(CategoryMarks)
         private categoryMarksRepository: Repository<CategoryMarks>,
+        @InjectRepository(AssignmentDetail)
+        private assignmentDetailRepository: Repository<AssignmentDetail>,
     ) {
         // Create logs directory if it doesn't exist
         const logsDir = path.join(process.cwd(), 'logs');
@@ -706,6 +709,14 @@ export class EmployeeService {
                     }
                 });
 
+                // Ensure NOT NULL fields are not null or undefined
+                assignment.position = assignment.position ?? '';
+                assignment.jobs = assignment.jobs ?? '';
+                assignment.function = assignment.function ?? '';
+                assignment.empCategory = assignment.empCategory ?? '';
+                assignment.empType = assignment.empType ?? '';
+                assignment.workOffice = assignment.workOffice ?? '';
+                assignment.level = assignment.level ?? 0;
                 // Only add assignment if it has more than just id and employeeId
                 if (Object.keys(assignment).length > 2) {
                     this.writeLog(`Adding assignment: ${JSON.stringify(assignment)}`);
@@ -778,6 +789,26 @@ export class EmployeeService {
         }
 
         this.writeLog('=== EMPLOYEE UPLOAD DEBUG LOG END ===');
+
+        // Persist assignments for existing employees only, skip empty assignments
+        for (const empDetail of employeeDetails) {
+            if (!empDetail.assignments || empDetail.assignments.length === 0) {
+                continue; // Skip records with empty assignments
+            }
+            const employee = await this.employeeRepository.findOne({ where: { employeeId: parseInt(empDetail.employeeId as string, 10) } });
+            if (!employee) {
+                continue; // Only process if employee exists
+            }
+            for (const assignmentDto of empDetail.assignments) {
+                // Create and save AssignmentDetail entity
+                const assignment = this.assignmentDetailRepository.create({
+                    ...assignmentDto,
+                    employeeId: employee.employeeId,
+                    employee: employee
+                });
+                await this.assignmentDetailRepository.save(assignment);
+            }
+        }
         return employeeDetails;
     }
 

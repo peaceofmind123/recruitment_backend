@@ -1,5 +1,5 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { EmployeeDetail } from './employee-detail.entity';
+import { Employee } from './employee.entity';
 
 @Entity('assignment_details')
 export class AssignmentDetail {
@@ -51,9 +51,9 @@ export class AssignmentDetail {
     @Column({ type: 'int' })
     employeeId: number;
 
-    @ManyToOne(() => EmployeeDetail, employee => employee.assignments)
+    @ManyToOne(() => Employee, employee => employee.assignments)
     @JoinColumn({ name: 'employeeId' })
-    employee: EmployeeDetail;
+    employee: Employee;
 
     @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
     totalGeographicalMarks: number;

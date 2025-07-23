@@ -30,7 +30,7 @@ interface ExcelRow {
 
 @Injectable()
 export class EmployeeService {
-    private logFile: string;
+    // Removed logFile property
 
     constructor(
         @InjectRepository(Employee)
@@ -46,36 +46,10 @@ export class EmployeeService {
         @InjectRepository(AssignmentDetail)
         private assignmentDetailRepository: Repository<AssignmentDetail>,
     ) {
-        // Create logs directory if it doesn't exist
-        const logsDir = path.join(process.cwd(), 'logs');
-        if (!fs.existsSync(logsDir)) {
-            fs.mkdirSync(logsDir, { recursive: true });
-        }
-
-        // Create log file with timestamp
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        this.logFile = path.join(logsDir, `employee-upload-${timestamp}.log`);
-
-        // Initialize log file
-        this.writeLog('=== EMPLOYEE UPLOAD DEBUG LOG START ===');
+        // Removed log file setup
     }
 
-    /**
-     * Write log message to file
-     */
-    private writeLog(message: string): void {
-        const timestamp = new Date().toISOString();
-        const logMessage = `[${timestamp}] ${message}\n`;
-
-        try {
-            fs.appendFileSync(this.logFile, logMessage);
-        } catch (error) {
-            console.error('Error writing to log file:', error);
-        }
-
-        // Also output to console for immediate feedback
-        console.log(message);
-    }
+    // Removed writeLog method
 
     private parseDate(dateStr: string): Date | undefined {
         if (!dateStr) return undefined;
@@ -376,13 +350,7 @@ export class EmployeeService {
         numDaysNew: number;
         totalNumDays: number;
     }> {
-        this.writeLog(`Calculating geographical marks for assignment employeeId=${assignment.employeeId}, startDateBS=${assignment.startDateBS}, endDateBS=${assignment.endDateBS}`);
-        this.writeLog(`  startDateBS: ${assignment.startDateBS}`);
-        this.writeLog(`  endDateBS: ${assignment.endDateBS}`);
-        this.writeLog(`  workOffice: ${assignment.workOffice}`);
-
         if (!assignment.startDateBS || !assignment.endDateBS) {
-            this.writeLog('  Missing startDateBS or endDateBS, returning 0 marks');
             return {
                 totalGeographicalMarks: 0,
                 numDaysOld: 0,
@@ -393,7 +361,6 @@ export class EmployeeService {
 
         // Validate BS dates
         if (!this.isValidBSDate(assignment.startDateBS) || !this.isValidBSDate(assignment.endDateBS)) {
-            this.writeLog(`Invalid BS date format for assignment employeeId=${assignment.employeeId}, startDateBS=${assignment.startDateBS}, endDateBS=${assignment.endDateBS}`);
             return {
                 totalGeographicalMarks: 0,
                 numDaysOld: 0,
@@ -404,7 +371,6 @@ export class EmployeeService {
 
         // Calculate total number of days
         const totalNumDays = this.calculateDaysBetweenBSDates(assignment.startDateBS, assignment.endDateBS);
-        this.writeLog(`  totalNumDays: ${totalNumDays}`);
 
         // Calculate days in old system (before 2079/03/31)
         let numDaysOld = 0;
@@ -422,30 +388,22 @@ export class EmployeeService {
                 const endDateAD = endDate.getDateObject();
                 const cutoffDateAD = cutoffDateBS.getDateObject();
 
-                this.writeLog(`  startDateAD: ${startDateAD.toISOString()}`);
-                this.writeLog(`  endDateAD: ${endDateAD.toISOString()}`);
-                this.writeLog(`  cutoffDateAD: ${cutoffDateAD.toISOString()}`);
-
                 // If assignment starts before cutoff and ends after cutoff
                 if (startDateAD < cutoffDateAD && endDateAD > cutoffDateAD) {
                     numDaysOld = this.calculateDaysBetweenBSDates(assignment.startDateBS, cutoffDate);
                     numDaysNew = this.calculateDaysBetweenBSDates(cutoffDate, assignment.endDateBS);
-                    this.writeLog(`  Assignment spans cutoff date: numDaysOld=${numDaysOld}, numDaysNew=${numDaysNew}`);
                 }
                 // If assignment is entirely before cutoff
                 else if (endDateAD <= cutoffDateAD) {
                     numDaysOld = totalNumDays;
                     numDaysNew = 0;
-                    this.writeLog(`  Assignment entirely before cutoff: numDaysOld=${numDaysOld}, numDaysNew=${numDaysNew}`);
                 }
                 // If assignment is entirely after cutoff
                 else if (startDateAD >= cutoffDateAD) {
                     numDaysOld = 0;
                     numDaysNew = totalNumDays;
-                    this.writeLog(`  Assignment entirely after cutoff: numDaysOld=${numDaysOld}, numDaysNew=${numDaysNew}`);
                 }
             } catch (error) {
-                this.writeLog(`Error processing date comparison: ${error}`);
                 // Fallback to simple calculation
                 numDaysOld = this.calculateDaysBetweenBSDates(assignment.startDateBS, cutoffDate);
                 numDaysNew = this.calculateDaysBetweenBSDates(cutoffDate, assignment.endDateBS);
@@ -481,15 +439,12 @@ export class EmployeeService {
                         gender
                     );
                     totalGeographicalMarks = marksOld + marksNew;
-                    this.writeLog(`  Spans cutoff: marksOld=${marksOld}, marksNew=${marksNew}, total=${totalGeographicalMarks}`);
                 } else {
                     // If assignment is entirely before or after cutoff date
                     // Use marksAccNew(totalNumDays)
                     totalGeographicalMarks = await this.marksAccNew(totalNumDays, presentDays, assignment.workOffice, gender);
-                    this.writeLog(`  Before/after cutoff: marksNew=${totalGeographicalMarks}`);
                 }
             } catch (error) {
-                this.writeLog(`Error in geographical marks calculation: ${error}`);
                 // Fallback to simple calculation
                 totalGeographicalMarks = await this.marksAccNew(totalNumDays, presentDays, assignment.workOffice, gender);
             }
@@ -497,8 +452,6 @@ export class EmployeeService {
             // Fallback if date parsing fails
             totalGeographicalMarks = await this.marksAccNew(totalNumDays, presentDays, assignment.workOffice, gender);
         }
-
-        this.writeLog(`  Final result: totalGeographicalMarks=${totalGeographicalMarks}`);
 
         return {
             totalGeographicalMarks,
@@ -517,14 +470,6 @@ export class EmployeeService {
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-        this.writeLog('=== EXCEL DATA DEBUG ===');
-        this.writeLog(`Sheet names: ${JSON.stringify(workbook.SheetNames)}`);
-        this.writeLog('First 10 rows of data:');
-        for (let i = 0; i < Math.min(10, data.length); i++) {
-            this.writeLog(`Row ${i}: ${JSON.stringify(data[i])}`);
-        }
-        this.writeLog('=== END EXCEL DATA DEBUG ===');
-
         const employeeDetails: EmployeeDetailDto[] = [];
         let currentEmployee: Partial<EmployeeDetailDto> = {};
         let isProcessingAssignments = false;
@@ -541,7 +486,6 @@ export class EmployeeService {
             // Extract employee ID
             const employeeIdMatch = firstCell.match(/Employee No:\s*(\d+)/);
             if (employeeIdMatch) {
-                this.writeLog(`Found employee ID: ${employeeIdMatch[1]}`);
                 if (Object.keys(currentEmployee).length > 0 && currentEmployee.employeeId) {
                     // Save assignments to database for previous employee
                     await this.saveAssignmentsToDatabase(currentEmployee.employeeId, currentAssignments, currentEmployeeGender);
@@ -557,7 +501,6 @@ export class EmployeeService {
                         assignments: [...currentAssignments] // Create a new array with all assignments
                     };
                     employeeDetails.push(employeeDetail);
-                    this.writeLog(`Adding employee with assignments: ${JSON.stringify(employeeDetail)}`);
                 }
                 currentEmployee = {
                     employeeId: employeeIdMatch[1],
@@ -570,14 +513,12 @@ export class EmployeeService {
 
             // Check for Assignment Details section
             if (firstCell === 'Assignment Details:') {
-                this.writeLog('Found Assignment Details section');
                 isProcessingAssignments = true;
                 // Get headers from next row
                 if (i + 1 < data.length) {
                     const headerRow = data[i + 1];
                     if (Array.isArray(headerRow)) {
                         assignmentHeaders = headerRow.map(h => h?.toString() || '');
-                        this.writeLog(`Assignment Headers: ${JSON.stringify(assignmentHeaders)}`);
                     }
                 }
                 i += 2; // Skip header row
@@ -586,7 +527,6 @@ export class EmployeeService {
 
             // Check for end of assignments section
             if (firstCell === 'Qualification Details:') {
-                this.writeLog('Found Qualification Details section - ending assignments');
                 isProcessingAssignments = false;
                 if (currentEmployee.employeeId) {
                     // Save assignments to database
@@ -603,7 +543,6 @@ export class EmployeeService {
                         assignments: [...currentAssignments] // Create a new array with all assignments
                     };
                     employeeDetails.push(employeeDetail);
-                    this.writeLog(`Adding employee with assignments: ${JSON.stringify(employeeDetail)}`);
                 }
                 currentAssignments = [];
                 continue;
@@ -611,10 +550,8 @@ export class EmployeeService {
 
             // Process assignment data
             if (isProcessingAssignments && row.length > 0) {
-                this.writeLog(`Processing assignment row ${i}: ${JSON.stringify(row)}`);
                 // Skip empty rows or rows without enough data
                 if (row.every(cell => !cell)) {
-                    this.writeLog('Skipping empty row');
                     continue;
                 }
 
@@ -626,8 +563,6 @@ export class EmployeeService {
                 assignmentHeaders.forEach((header, index) => {
                     const rawValue = row[index];
                     const value = rawValue?.toString() || '';
-
-                    this.writeLog(`Processing header "${header}" at index ${index}: rawValue=${rawValue}, value="${value}"`);
 
                     // Don't skip empty values for date fields as they might be Excel date numbers
                     if (!value && !this.isExcelDateNumber(rawValue)) return;
@@ -654,28 +589,22 @@ export class EmployeeService {
                         case 'Start Date BS':
                             if (this.isExcelDateNumber(rawValue)) {
                                 assignment.startDateBS = this.convertExcelDateToBS(rawValue);
-                                this.writeLog(`Converted Start Date BS: ${rawValue} -> ${assignment.startDateBS}`);
                             } else {
                                 assignment.startDateBS = value;
-                                this.writeLog(`Using Start Date BS as-is: ${value}`);
                             }
                             break;
                         case 'End Date BS':
                             if (this.isExcelDateNumber(rawValue)) {
                                 assignment.endDateBS = this.convertExcelDateToBS(rawValue);
-                                this.writeLog(`Converted End Date BS: ${rawValue} -> ${assignment.endDateBS}`);
                             } else {
                                 assignment.endDateBS = value;
-                                this.writeLog(`Using End Date BS as-is: ${value}`);
                             }
                             break;
                         case 'Seniority Date BS':
                             if (this.isExcelDateNumber(rawValue)) {
                                 assignment.seniorityDateBS = this.convertExcelDateToBS(rawValue);
-                                this.writeLog(`Converted Seniority Date BS: ${rawValue} -> ${assignment.seniorityDateBS}`);
                             } else {
                                 assignment.seniorityDateBS = value;
-                                this.writeLog(`Using Seniority Date BS as-is: ${value}`);
                             }
                             break;
                         case 'Level':
@@ -684,10 +613,8 @@ export class EmployeeService {
                         case 'Perm. Level Date BS':
                             if (this.isExcelDateNumber(rawValue)) {
                                 assignment.permLevelDateBS = this.convertExcelDateToBS(rawValue);
-                                this.writeLog(`Converted Perm Level Date BS: ${rawValue} -> ${assignment.permLevelDateBS}`);
                             } else {
                                 assignment.permLevelDateBS = value;
-                                this.writeLog(`Using Perm Level Date BS as-is: ${value}`);
                             }
                             break;
                         case 'Reason':
@@ -718,10 +645,7 @@ export class EmployeeService {
                     Object.keys(assignment).length > 2 &&
                     assignment.startDateBS
                 ) {
-                    this.writeLog(`Adding assignment: ${JSON.stringify(assignment)}`);
                     currentAssignments.push(assignment as AssignmentDetailDto);
-                } else {
-                    this.writeLog(`Skipping assignment - not enough data: ${JSON.stringify(assignment)}`);
                 }
                 continue;
             }
@@ -784,11 +708,8 @@ export class EmployeeService {
                     assignments: [...currentAssignments]
                 };
                 employeeDetails.push(employeeDetail);
-                this.writeLog(`Adding final employee with assignments: ${JSON.stringify(employeeDetail)}`);
             }
         }
-
-        this.writeLog('=== EMPLOYEE UPLOAD DEBUG LOG END ===');
 
         return employeeDetails;
     }
@@ -798,7 +719,6 @@ export class EmployeeService {
      */
     private async saveAssignmentsToDatabase(employeeId: string, assignments: AssignmentDetailDto[], gender: 'male' | 'female' | null): Promise<void> {
         if (!assignments || assignments.length === 0) {
-            this.writeLog(`No assignments to save for employeeId=${employeeId}`);
             return;
         }
 
@@ -808,15 +728,12 @@ export class EmployeeService {
         });
 
         if (!employee) {
-            this.writeLog(`Employee not found in database for employeeId=${employeeId}`);
+            console.error(`Employee not found in database for employeeId=${employeeId}`);
             return;
         }
 
         // Calculate geographical marks for all assignments
         await this.calculateGeographicalMarksForAssignmentsAsync(assignments, gender);
-
-        let attempted = 0;
-        let saved = 0;
 
         for (const assignmentDto of assignments) {
             // Check if assignment already exists
@@ -824,25 +741,17 @@ export class EmployeeService {
                 employeeId: employee.employeeId,
                 startDateBS: assignmentDto.startDateBS
             };
-
             if (assignmentDto.endDateBS) {
                 whereCondition.endDateBS = assignmentDto.endDateBS;
             } else {
                 whereCondition.endDateBS = null;
             }
-
             const exists = await this.assignmentDetailRepository.findOne({
                 where: whereCondition
             });
-
             if (exists) {
-                this.writeLog(`Duplicate assignment found for employeeId=${employee.employeeId}, startDateBS=${assignmentDto.startDateBS}, endDateBS=${assignmentDto.endDateBS}. Skipping assignment.`);
                 continue;
             }
-
-            attempted++;
-            this.writeLog(`Attempting to save assignment: ${JSON.stringify(assignmentDto)}`);
-
             try {
                 const assignment = this.assignmentDetailRepository.create({
                     ...assignmentDto,
@@ -850,14 +759,10 @@ export class EmployeeService {
                     employee: employee
                 });
                 await this.assignmentDetailRepository.save(assignment);
-                saved++;
-                this.writeLog(`Successfully saved assignment for employeeId=${employee.employeeId}, startDateBS=${assignmentDto.startDateBS}, endDateBS=${assignmentDto.endDateBS}`);
             } catch (error) {
-                this.writeLog(`Error saving assignment for employeeId=${employee.employeeId}, startDateBS=${assignmentDto.startDateBS}, endDateBS=${assignmentDto.endDateBS}: ${error.message}`);
+                console.error(`Error saving assignment for employeeId=${employee.employeeId}, startDateBS=${assignmentDto.startDateBS}, endDateBS=${assignmentDto.endDateBS}: ${error.message}`);
             }
         }
-
-        this.writeLog(`Summary for employeeId=${employee.employeeId}: attempted=${attempted}, saved=${saved}`);
     }
 
     /**
@@ -897,11 +802,9 @@ export class EmployeeService {
             // Format as BS date string (YYYY-MM-DD)
             const bsDateString = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
 
-            this.writeLog(`Excel date ${excelDateNumber} converted to BS date: ${bsDateString} (treating as BS directly)`);
-
             return bsDateString;
         } catch (error) {
-            this.writeLog(`Error converting Excel date ${excelDateNumber} to BS date: ${error}`);
+            console.log(`Error converting Excel date ${excelDateNumber} to BS date: ${error}`);
             return '';
         }
     }
@@ -919,8 +822,6 @@ export class EmployeeService {
         // For BS dates, we're looking for numbers that would convert to years around 2000-2100
         // Excel number 36526 converts to 2000-01-01, and 73050 converts to 2100-01-01
         const isInExcelDateRange = isNumber && num >= 36526 && num <= 73050;
-
-        this.writeLog(`isExcelDateNumber check: value=${value}, num=${num}, isNumber=${isNumber}, isInExcelDateRange=${isInExcelDateRange}`);
 
         return isInExcelDateRange;
     }

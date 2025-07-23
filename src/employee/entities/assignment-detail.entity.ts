@@ -9,7 +9,7 @@ export class AssignmentDetail {
     @PrimaryColumn()
     startDateBS: string;
 
-    @PrimaryColumn()
+    @Column({ nullable: true })
     endDateBS: string;
 
     @Column()

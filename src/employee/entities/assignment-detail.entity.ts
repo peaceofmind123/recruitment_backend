@@ -48,8 +48,8 @@ export class AssignmentDetail {
     @Column({ type: 'date', nullable: true })
     seniorityDate: Date;
 
-    @ManyToOne(() => Employee, employee => employee.assignments)
-    @JoinColumn({ name: 'employeeId' })
+    @ManyToOne(() => Employee, employee => employee.assignments, { onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'employeeId', referencedColumnName: 'employeeId' })
     employee: Employee;
 
     @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })

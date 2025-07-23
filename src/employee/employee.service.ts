@@ -543,8 +543,8 @@ export class EmployeeService {
             if (employeeIdMatch) {
                 this.writeLog(`Found employee ID: ${employeeIdMatch[1]}`);
                 if (Object.keys(currentEmployee).length > 0 && currentEmployee.employeeId) {
-                    // Calculate geographical marks for all assignments
-                    await this.calculateGeographicalMarksForAssignmentsAsync(currentAssignments, currentEmployeeGender);
+                    // Save assignments to database for previous employee
+                    await this.saveAssignmentsToDatabase(currentEmployee.employeeId, currentAssignments, currentEmployeeGender);
 
                     // Create a new object to ensure all properties are included
                     const employeeDetail: EmployeeDetailDto = {
@@ -589,8 +589,8 @@ export class EmployeeService {
                 this.writeLog('Found Qualification Details section - ending assignments');
                 isProcessingAssignments = false;
                 if (currentEmployee.employeeId) {
-                    // Calculate geographical marks for all assignments
-                    await this.calculateGeographicalMarksForAssignmentsAsync(currentAssignments, currentEmployeeGender);
+                    // Save assignments to database
+                    await this.saveAssignmentsToDatabase(currentEmployee.employeeId, currentAssignments, currentEmployeeGender);
 
                     // Create a new object to ensure all properties are included
                     const employeeDetail: EmployeeDetailDto = {
@@ -712,11 +712,11 @@ export class EmployeeService {
                 assignment.empType = assignment.empType ?? '';
                 assignment.workOffice = assignment.workOffice ?? '';
                 assignment.level = assignment.level ?? 0;
-                // Only add assignment if it has more than just employeeId and has startDateBS and endDateBS
+                // Only add assignment if it has more than just employeeId and has startDateBS
+                // Note: endDateBS can be null/undefined for current assignments
                 if (
                     Object.keys(assignment).length > 2 &&
-                    assignment.startDateBS &&
-                    assignment.endDateBS
+                    assignment.startDateBS
                 ) {
                     this.writeLog(`Adding assignment: ${JSON.stringify(assignment)}`);
                     currentAssignments.push(assignment as AssignmentDetailDto);
@@ -769,66 +769,95 @@ export class EmployeeService {
         }
 
         // After the loop, save for the last employee
-        if (currentEmployee.employeeId && currentAssignments.length > 0) {
-            // Find the employee in the database
-            const employee = await this.employeeRepository.findOne({ where: { employeeId: parseInt(currentEmployee.employeeId as string, 10) } });
-            if (employee) {
-                let attempted = 0;
-                let saved = 0;
-                for (const assignmentDto of currentAssignments) {
-                    const exists = await this.assignmentDetailRepository.findOne({
-                        where: {
-                            employeeId: employee.employeeId,
-                            startDateBS: assignmentDto.startDateBS,
-                            endDateBS: assignmentDto.endDateBS
-                        }
-                    });
-                    if (exists) {
-                        this.writeLog(`Duplicate assignment found for employeeId=${employee.employeeId}, startDateBS=${assignmentDto.startDateBS}, endDateBS=${assignmentDto.endDateBS}. Skipping assignment.`);
-                        continue;
-                    }
-                    attempted++;
-                    this.writeLog(`Attempting to save assignment: ${JSON.stringify(assignmentDto)}`);
-                    try {
-                        const assignment = this.assignmentDetailRepository.create({
-                            ...assignmentDto,
-                            employeeId: employee.employeeId,
-                            employee: employee
-                        });
-                        await this.assignmentDetailRepository.save(assignment);
-                        saved++;
-                        this.writeLog(`Successfully saved assignment for employeeId=${employee.employeeId}, startDateBS=${assignmentDto.startDateBS}, endDateBS=${assignmentDto.endDateBS}`);
-                    } catch (error) {
-                        this.writeLog(`Error saving assignment for employeeId=${employee.employeeId}, startDateBS=${assignmentDto.startDateBS}, endDateBS=${assignmentDto.endDateBS}: ${error.message}`);
-                    }
-                }
-                this.writeLog(`Summary for employeeId=${employee.employeeId}: attempted=${attempted}, saved=${saved}`);
+        if (currentEmployee.employeeId) {
+            await this.saveAssignmentsToDatabase(currentEmployee.employeeId, currentAssignments, currentEmployeeGender);
+
+            // Also add to employeeDetails if not already added
+            if (currentAssignments.length > 0) {
+                const employeeDetail: EmployeeDetailDto = {
+                    employeeId: currentEmployee.employeeId,
+                    name: currentEmployee.name,
+                    dob: currentEmployee.dob,
+                    dor: currentEmployee.dor,
+                    joinDate: currentEmployee.joinDate,
+                    permDate: currentEmployee.permDate,
+                    assignments: [...currentAssignments]
+                };
+                employeeDetails.push(employeeDetail);
+                this.writeLog(`Adding final employee with assignments: ${JSON.stringify(employeeDetail)}`);
             }
         }
 
         this.writeLog('=== EMPLOYEE UPLOAD DEBUG LOG END ===');
 
-        // Persist assignments for existing employees only, skip empty assignments
-        // (Already handled above, so this block is no longer needed)
-        // for (const empDetail of employeeDetails) {
-        //     if (!empDetail.assignments || empDetail.assignments.length === 0) {
-        //         continue; // Skip records with empty assignments
-        //     }
-        //     const employee = await this.employeeRepository.findOne({ where: { employeeId: parseInt(empDetail.employeeId as string, 10) } });
-        //     if (!employee) {
-        //         continue; // Only process if employee exists
-        //     }
-        //     for (const assignmentDto of empDetail.assignments) {
-        //         // Create and save AssignmentDetail entity
-        //         const assignment = this.assignmentDetailRepository.create({
-        //             ...assignmentDto,
-        //             employeeId: employee.employeeId,
-        //             employee: employee
-        //         });
-        //         await this.assignmentDetailRepository.save(assignment);
-        //     }
-        // }
         return employeeDetails;
+    }
+
+    /**
+     * Save assignments to database for an employee
+     */
+    private async saveAssignmentsToDatabase(employeeId: string, assignments: AssignmentDetailDto[], gender: 'male' | 'female' | null): Promise<void> {
+        if (!assignments || assignments.length === 0) {
+            this.writeLog(`No assignments to save for employeeId=${employeeId}`);
+            return;
+        }
+
+        // Find the employee in the database
+        const employee = await this.employeeRepository.findOne({
+            where: { employeeId: parseInt(employeeId, 10) }
+        });
+
+        if (!employee) {
+            this.writeLog(`Employee not found in database for employeeId=${employeeId}`);
+            return;
+        }
+
+        // Calculate geographical marks for all assignments
+        await this.calculateGeographicalMarksForAssignmentsAsync(assignments, gender);
+
+        let attempted = 0;
+        let saved = 0;
+
+        for (const assignmentDto of assignments) {
+            // Check if assignment already exists
+            const whereCondition: any = {
+                employeeId: employee.employeeId,
+                startDateBS: assignmentDto.startDateBS
+            };
+
+            if (assignmentDto.endDateBS) {
+                whereCondition.endDateBS = assignmentDto.endDateBS;
+            } else {
+                whereCondition.endDateBS = null;
+            }
+
+            const exists = await this.assignmentDetailRepository.findOne({
+                where: whereCondition
+            });
+
+            if (exists) {
+                this.writeLog(`Duplicate assignment found for employeeId=${employee.employeeId}, startDateBS=${assignmentDto.startDateBS}, endDateBS=${assignmentDto.endDateBS}. Skipping assignment.`);
+                continue;
+            }
+
+            attempted++;
+            this.writeLog(`Attempting to save assignment: ${JSON.stringify(assignmentDto)}`);
+
+            try {
+                const assignment = this.assignmentDetailRepository.create({
+                    ...assignmentDto,
+                    employeeId: employee.employeeId,
+                    employee: employee
+                });
+                await this.assignmentDetailRepository.save(assignment);
+                saved++;
+                this.writeLog(`Successfully saved assignment for employeeId=${employee.employeeId}, startDateBS=${assignmentDto.startDateBS}, endDateBS=${assignmentDto.endDateBS}`);
+            } catch (error) {
+                this.writeLog(`Error saving assignment for employeeId=${employee.employeeId}, startDateBS=${assignmentDto.startDateBS}, endDateBS=${assignmentDto.endDateBS}: ${error.message}`);
+            }
+        }
+
+        this.writeLog(`Summary for employeeId=${employee.employeeId}: attempted=${attempted}, saved=${saved}`);
     }
 
     /**

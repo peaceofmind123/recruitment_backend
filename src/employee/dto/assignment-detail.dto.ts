@@ -1,8 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class AssignmentDetailDto {
-    @ApiProperty({ description: 'Unique identifier for the assignment' })
-    id: string;
+    @ApiProperty({ description: 'Employee ID' })
+    employeeId: number;
+
+    @ApiProperty({ description: 'Start date in BS format' })
+    startDateBS: string;
+
+    @ApiProperty({ description: 'End date in BS format' })
+    endDateBS: string;
 
     @ApiProperty({ description: 'Position of the employee' })
     position: string;
@@ -22,12 +28,6 @@ export class AssignmentDetailDto {
     @ApiProperty({ description: 'Work office location' })
     workOffice: string;
 
-    @ApiProperty({ description: 'Start date in BS format', required: false })
-    startDateBS?: string;
-
-    @ApiProperty({ description: 'End date in BS format', required: false })
-    endDateBS?: string;
-
     @ApiProperty({ description: 'Seniority date in BS format', required: false })
     seniorityDateBS?: string;
 
@@ -45,9 +45,6 @@ export class AssignmentDetailDto {
 
     @ApiProperty({ description: 'Seniority date', required: false })
     seniorityDate?: Date;
-
-    @ApiProperty({ description: 'Employee ID' })
-    employeeId: number;
 
     @ApiProperty({ description: 'Total geographical marks calculated for this assignment', required: false })
     totalGeographicalMarks?: number;

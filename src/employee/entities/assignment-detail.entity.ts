@@ -1,10 +1,16 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, PrimaryColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Employee } from './employee.entity';
 
 @Entity('assignment_details')
 export class AssignmentDetail {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+    @PrimaryColumn({ type: 'int' })
+    employeeId: number;
+
+    @PrimaryColumn()
+    startDateBS: string;
+
+    @PrimaryColumn()
+    endDateBS: string;
 
     @Column()
     position: string;
@@ -25,12 +31,6 @@ export class AssignmentDetail {
     workOffice: string;
 
     @Column({ nullable: true })
-    startDateBS: string;
-
-    @Column({ nullable: true })
-    endDateBS: string;
-
-    @Column({ nullable: true })
     seniorityDateBS: string;
 
     @Column({ type: 'int', width: 2 })
@@ -47,9 +47,6 @@ export class AssignmentDetail {
 
     @Column({ type: 'date', nullable: true })
     seniorityDate: Date;
-
-    @Column({ type: 'int' })
-    employeeId: number;
 
     @ManyToOne(() => Employee, employee => employee.assignments)
     @JoinColumn({ name: 'employeeId' })

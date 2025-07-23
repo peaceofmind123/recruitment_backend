@@ -376,7 +376,7 @@ export class EmployeeService {
         numDaysNew: number;
         totalNumDays: number;
     }> {
-        this.writeLog(`Calculating geographical marks for assignment ${assignment.id}:`);
+        this.writeLog(`Calculating geographical marks for assignment employeeId=${assignment.employeeId}, startDateBS=${assignment.startDateBS}, endDateBS=${assignment.endDateBS}`);
         this.writeLog(`  startDateBS: ${assignment.startDateBS}`);
         this.writeLog(`  endDateBS: ${assignment.endDateBS}`);
         this.writeLog(`  workOffice: ${assignment.workOffice}`);
@@ -393,7 +393,7 @@ export class EmployeeService {
 
         // Validate BS dates
         if (!this.isValidBSDate(assignment.startDateBS) || !this.isValidBSDate(assignment.endDateBS)) {
-            this.writeLog(`Invalid BS date format for assignment ${assignment.id}: startDateBS=${assignment.startDateBS}, endDateBS=${assignment.endDateBS}`);
+            this.writeLog(`Invalid BS date format for assignment employeeId=${assignment.employeeId}, startDateBS=${assignment.startDateBS}, endDateBS=${assignment.endDateBS}`);
             return {
                 totalGeographicalMarks: 0,
                 numDaysOld: 0,
@@ -619,8 +619,7 @@ export class EmployeeService {
                 }
 
                 const assignment: Partial<AssignmentDetailDto> = {
-                    id: crypto.randomUUID(),
-                    employeeId: parseInt(currentEmployee.employeeId || '0')
+                    employeeId: parseInt(currentEmployee.employeeId || '0'),
                 };
 
                 // Map the columns based on headers
@@ -653,7 +652,6 @@ export class EmployeeService {
                             assignment.workOffice = value;
                             break;
                         case 'Start Date BS':
-                            // Check if it's an Excel date number and convert if needed
                             if (this.isExcelDateNumber(rawValue)) {
                                 assignment.startDateBS = this.convertExcelDateToBS(rawValue);
                                 this.writeLog(`Converted Start Date BS: ${rawValue} -> ${assignment.startDateBS}`);
@@ -663,7 +661,6 @@ export class EmployeeService {
                             }
                             break;
                         case 'End Date BS':
-                            // Check if it's an Excel date number and convert if needed
                             if (this.isExcelDateNumber(rawValue)) {
                                 assignment.endDateBS = this.convertExcelDateToBS(rawValue);
                                 this.writeLog(`Converted End Date BS: ${rawValue} -> ${assignment.endDateBS}`);
@@ -673,7 +670,6 @@ export class EmployeeService {
                             }
                             break;
                         case 'Seniority Date BS':
-                            // Check if it's an Excel date number and convert if needed
                             if (this.isExcelDateNumber(rawValue)) {
                                 assignment.seniorityDateBS = this.convertExcelDateToBS(rawValue);
                                 this.writeLog(`Converted Seniority Date BS: ${rawValue} -> ${assignment.seniorityDateBS}`);
@@ -686,7 +682,6 @@ export class EmployeeService {
                             assignment.level = parseInt(value) || 0;
                             break;
                         case 'Perm. Level Date BS':
-                            // Check if it's an Excel date number and convert if needed
                             if (this.isExcelDateNumber(rawValue)) {
                                 assignment.permLevelDateBS = this.convertExcelDateToBS(rawValue);
                                 this.writeLog(`Converted Perm Level Date BS: ${rawValue} -> ${assignment.permLevelDateBS}`);
@@ -717,8 +712,12 @@ export class EmployeeService {
                 assignment.empType = assignment.empType ?? '';
                 assignment.workOffice = assignment.workOffice ?? '';
                 assignment.level = assignment.level ?? 0;
-                // Only add assignment if it has more than just id and employeeId
-                if (Object.keys(assignment).length > 2) {
+                // Only add assignment if it has more than just employeeId and has startDateBS and endDateBS
+                if (
+                    Object.keys(assignment).length > 2 &&
+                    assignment.startDateBS &&
+                    assignment.endDateBS
+                ) {
                     this.writeLog(`Adding assignment: ${JSON.stringify(assignment)}`);
                     currentAssignments.push(assignment as AssignmentDetailDto);
                 } else {
@@ -769,46 +768,66 @@ export class EmployeeService {
             }
         }
 
-        // Add the last employee if exists
-        if (Object.keys(currentEmployee).length > 0 && currentEmployee.employeeId) {
-            // Calculate geographical marks for all assignments
-            await this.calculateGeographicalMarksForAssignmentsAsync(currentAssignments, currentEmployeeGender);
-
-            // Create a new object to ensure all properties are included
-            const employeeDetail: EmployeeDetailDto = {
-                employeeId: currentEmployee.employeeId,
-                name: currentEmployee.name,
-                dob: currentEmployee.dob,
-                dor: currentEmployee.dor,
-                joinDate: currentEmployee.joinDate,
-                permDate: currentEmployee.permDate,
-                assignments: [...currentAssignments] // Create a new array with all assignments
-            };
-            employeeDetails.push(employeeDetail);
-            this.writeLog(`Adding final employee with assignments: ${JSON.stringify(employeeDetail)}`);
+        // After the loop, save for the last employee
+        if (currentEmployee.employeeId && currentAssignments.length > 0) {
+            // Find the employee in the database
+            const employee = await this.employeeRepository.findOne({ where: { employeeId: parseInt(currentEmployee.employeeId as string, 10) } });
+            if (employee) {
+                let attempted = 0;
+                let saved = 0;
+                for (const assignmentDto of currentAssignments) {
+                    const exists = await this.assignmentDetailRepository.findOne({
+                        where: {
+                            employeeId: employee.employeeId,
+                            startDateBS: assignmentDto.startDateBS,
+                            endDateBS: assignmentDto.endDateBS
+                        }
+                    });
+                    if (exists) {
+                        this.writeLog(`Duplicate assignment found for employeeId=${employee.employeeId}, startDateBS=${assignmentDto.startDateBS}, endDateBS=${assignmentDto.endDateBS}. Skipping assignment.`);
+                        continue;
+                    }
+                    attempted++;
+                    this.writeLog(`Attempting to save assignment: ${JSON.stringify(assignmentDto)}`);
+                    try {
+                        const assignment = this.assignmentDetailRepository.create({
+                            ...assignmentDto,
+                            employeeId: employee.employeeId,
+                            employee: employee
+                        });
+                        await this.assignmentDetailRepository.save(assignment);
+                        saved++;
+                        this.writeLog(`Successfully saved assignment for employeeId=${employee.employeeId}, startDateBS=${assignmentDto.startDateBS}, endDateBS=${assignmentDto.endDateBS}`);
+                    } catch (error) {
+                        this.writeLog(`Error saving assignment for employeeId=${employee.employeeId}, startDateBS=${assignmentDto.startDateBS}, endDateBS=${assignmentDto.endDateBS}: ${error.message}`);
+                    }
+                }
+                this.writeLog(`Summary for employeeId=${employee.employeeId}: attempted=${attempted}, saved=${saved}`);
+            }
         }
 
         this.writeLog('=== EMPLOYEE UPLOAD DEBUG LOG END ===');
 
         // Persist assignments for existing employees only, skip empty assignments
-        for (const empDetail of employeeDetails) {
-            if (!empDetail.assignments || empDetail.assignments.length === 0) {
-                continue; // Skip records with empty assignments
-            }
-            const employee = await this.employeeRepository.findOne({ where: { employeeId: parseInt(empDetail.employeeId as string, 10) } });
-            if (!employee) {
-                continue; // Only process if employee exists
-            }
-            for (const assignmentDto of empDetail.assignments) {
-                // Create and save AssignmentDetail entity
-                const assignment = this.assignmentDetailRepository.create({
-                    ...assignmentDto,
-                    employeeId: employee.employeeId,
-                    employee: employee
-                });
-                await this.assignmentDetailRepository.save(assignment);
-            }
-        }
+        // (Already handled above, so this block is no longer needed)
+        // for (const empDetail of employeeDetails) {
+        //     if (!empDetail.assignments || empDetail.assignments.length === 0) {
+        //         continue; // Skip records with empty assignments
+        //     }
+        //     const employee = await this.employeeRepository.findOne({ where: { employeeId: parseInt(empDetail.employeeId as string, 10) } });
+        //     if (!employee) {
+        //         continue; // Only process if employee exists
+        //     }
+        //     for (const assignmentDto of empDetail.assignments) {
+        //         // Create and save AssignmentDetail entity
+        //         const assignment = this.assignmentDetailRepository.create({
+        //             ...assignmentDto,
+        //             employeeId: employee.employeeId,
+        //             employee: employee
+        //         });
+        //         await this.assignmentDetailRepository.save(assignment);
+        //     }
+        // }
         return employeeDetails;
     }
 

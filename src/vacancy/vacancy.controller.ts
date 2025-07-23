@@ -140,4 +140,12 @@ export class VacancyController {
     ) {
         return this.vacancyService.calculateSeniorityMarks(bigyapanNo, dto);
     }
+
+    @Post(':bigyapanNo/geographical-marks')
+    @ApiOperation({ summary: 'Calculate and save geographical marks for all applicants of a vacancy' })
+    async calculateGeographicalMarks(
+        @Param('bigyapanNo') bigyapanNo: string
+    ) {
+        return this.vacancyService.calculateGeographicalMarks(bigyapanNo);
+    }
 } 

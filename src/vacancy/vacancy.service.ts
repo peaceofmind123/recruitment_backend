@@ -15,6 +15,7 @@ import { Employee } from '../employee/entities/employee.entity';
 import { SeniorityMarksDto } from './dto/seniority-marks.dto';
 import { In } from 'typeorm';
 import { Qualification } from './entities/qualification.entity';
+import { AssignmentDetail } from '../employee/entities/assignment-detail.entity';
 
 interface ExcelRow {
     'Employee ID': string | number;
@@ -380,5 +381,27 @@ export class VacancyService {
         }
 
         return { message: 'Seniority marks calculated and updated successfully' };
+    }
+
+    async calculateGeographicalMarks(bigyapanNo: string) {
+        // Find all applicants for the vacancy, including their employee and assignments
+        const applicants = await this.applicantRepository.find({
+            where: { bigyapanNo },
+            relations: ['employee', 'employee.assignments']
+        });
+
+        if (!applicants.length) {
+            throw new BadRequestException('No applicants found for this vacancy');
+        }
+
+        for (const applicant of applicants) {
+            const assignments = applicant.employee?.assignments || [];
+            // Sum totalGeographicalMarks for all assignments
+            const geoSum = assignments.reduce((acc, v) => acc + (Number(v.totalGeographicalMarks) || 0), 0);
+            applicant.geographicalMarks = geoSum;
+            await this.applicantRepository.save(applicant);
+        }
+
+        return { message: 'Geographical marks calculated and updated successfully' };
     }
 } 

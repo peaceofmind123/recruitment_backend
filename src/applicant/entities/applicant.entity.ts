@@ -42,10 +42,10 @@ export class Applicant {
     @IsOptional()
     educationMarks: number;
 
-    @ApiProperty({ description: 'Geographical marks of the applicant' })
+    @ApiProperty({ description: 'Geographical marks of the applicant', nullable: true })
     @Column({ type: 'decimal', precision: 20, scale: 10, nullable: true })
     @IsNumber()
     @Min(0)
     @IsOptional()
-    geographicalMarks: number;
+    geographicalMarks: number | null;
 } 

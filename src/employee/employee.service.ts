@@ -15,6 +15,7 @@ import { Office } from '../common/entities/office.entity';
 import { District } from '../common/entities/district.entity';
 import { CategoryMarks } from '../common/entities/category-marks.entity';
 import { AssignmentDetail } from './entities/assignment-detail.entity';
+import { EmployeeServiceDetailResponseDto } from './dto/employee-detail-response.dto';
 const NepaliDate = require('nepali-datetime');
 
 interface ExcelRow {
@@ -863,5 +864,16 @@ export class EmployeeService {
         if (sex === 'Male') return 'male';
         if (sex === 'Female') return 'female';
         return null;
+    }
+
+    async getServiceDetail(): Promise<EmployeeServiceDetailResponseDto> {
+        const employees = await this.employeeRepository.find({
+            relations: ['qualifications']
+        });
+
+        return {
+            employees,
+            totalCount: employees.length
+        };
     }
 } 

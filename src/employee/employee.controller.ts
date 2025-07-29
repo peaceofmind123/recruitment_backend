@@ -4,12 +4,23 @@ import { ApiConsumes, ApiOperation, ApiTags, ApiBody, ApiQuery, ApiResponse } fr
 import { EmployeeService } from './employee.service';
 import { FilterByEmployeeIdDto } from './dto/filter-by-employee-id.dto';
 import { EmployeeDetailDto } from './dto/employee-detail.dto';
-import { EmployeeDetailResponseDto } from './dto/employee-detail-response.dto';
+import { EmployeeDetailResponseDto, EmployeeServiceDetailResponseDto } from './dto/employee-detail-response.dto';
 
 @ApiTags('Employee')
 @Controller('employee')
 export class EmployeeController {
     constructor(private readonly employeeService: EmployeeService) { }
+
+    @Get('service-detail')
+    @ApiOperation({ summary: 'Get all employees with their qualifications' })
+    @ApiResponse({
+        status: 200,
+        description: 'Successfully retrieved all employees with qualifications',
+        type: EmployeeServiceDetailResponseDto
+    })
+    async getServiceDetail(): Promise<EmployeeServiceDetailResponseDto> {
+        return this.employeeService.getServiceDetail();
+    }
 
     @Post('upload-service-detail')
     @ApiOperation({ summary: 'Upload service detail Excel file' })

@@ -332,6 +332,22 @@ export class VacancyService {
     }
 
     async calculateSeniorityMarks(bigyapanNo: string, dto: SeniorityMarksDto) {
+        // Find the vacancy and update it with bigyapanEndDate
+        const vacancy = await this.vacancyRepository.findOne({
+            where: { bigyapanNo }
+        });
+
+        if (!vacancy) {
+            throw new NotFoundException(`Vacancy with bigyapan number ${bigyapanNo} not found`);
+        }
+
+        // Convert the date string to a Date object
+        const bigyapanEndDate = new Date(dto.bigyapanEndDate);
+
+        // Update vacancy with bigyapanEndDate
+        vacancy.bigyapanEndDate = bigyapanEndDate;
+        await this.vacancyRepository.save(vacancy);
+
         // Find all applicants for the vacancy
         const applicants = await this.applicantRepository.find({
             where: { bigyapanNo },
@@ -349,9 +365,6 @@ export class VacancyService {
         const employees = await this.employeeRepository.find({
             where: { employeeId: In(employeeIds) }
         });
-
-        // Convert the date string to a Date object
-        const bigyapanEndDate = new Date(dto.bigyapanEndDate);
 
         // Calculate seniority marks for each applicant
         for (const applicant of applicants) {

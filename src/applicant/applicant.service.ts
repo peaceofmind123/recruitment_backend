@@ -3,12 +3,22 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Applicant } from './entities/applicant.entity';
 import { CreateApplicantDto } from './dto/create-applicant.dto';
+import { SeniorityDetailsDto } from './dto/seniority-details.dto';
+import { Employee } from '../employee/entities/employee.entity';
+import { Vacancy } from '../vacancy/entities/vacancy.entity';
+import { AssignmentDetail } from '../employee/entities/assignment-detail.entity';
 
 @Injectable()
 export class ApplicantService {
     constructor(
         @InjectRepository(Applicant)
         private applicantRepository: Repository<Applicant>,
+        @InjectRepository(Employee)
+        private employeeRepository: Repository<Employee>,
+        @InjectRepository(Vacancy)
+        private vacancyRepository: Repository<Vacancy>,
+        @InjectRepository(AssignmentDetail)
+        private assignmentDetailRepository: Repository<AssignmentDetail>,
     ) { }
 
     async create(createApplicantDto: CreateApplicantDto): Promise<Applicant> {
@@ -47,5 +57,60 @@ export class ApplicantService {
         if (result.affected === 0) {
             throw new NotFoundException(`Applicant with employee ID ${employeeId} and bigyapan number ${bigyapanNo} not found`);
         }
+    }
+
+    async getSeniorityDetails(employeeId: number, bigyapanNo: string): Promise<SeniorityDetailsDto> {
+        // Find the applicant with relations
+        const applicant = await this.applicantRepository.findOne({
+            where: { employeeId, bigyapanNo },
+            relations: ['employee', 'vacancy']
+        });
+
+        if (!applicant) {
+            throw new NotFoundException(`Applicant with employee ID ${employeeId} and bigyapan number ${bigyapanNo} not found`);
+        }
+
+        // Find the current position from assignment details
+        const currentAssignment = await this.assignmentDetailRepository.findOne({
+            where: { employeeId },
+            order: { startDate: 'DESC' }
+        });
+
+        // Calculate time elapsed between seniority date and bigyapan end date
+        const seniorityDate = new Date(applicant.employee.seniorityDate);
+        const bigyapanEndDate = applicant.vacancy.bigyapanEndDate;
+        
+        if (!bigyapanEndDate) {
+            throw new NotFoundException(`Bigyapan end date not found for vacancy ${bigyapanNo}`);
+        }
+
+        const endDate = new Date(bigyapanEndDate);
+        const timeDiff = endDate.getTime() - seniorityDate.getTime();
+        
+        // Calculate years, months, and days
+        const yearsElapsed = Math.floor(timeDiff / (1000 * 60 * 60 * 24 * 365.25));
+        const remainingDays = timeDiff % (1000 * 60 * 60 * 24 * 365.25);
+        const monthsElapsed = Math.floor(remainingDays / (1000 * 60 * 60 * 24 * 30.44));
+        const daysElapsed = Math.floor((remainingDays % (1000 * 60 * 60 * 24 * 30.44)) / (1000 * 60 * 60 * 24));
+
+        const seniorityDetails: SeniorityDetailsDto = {
+            employeeId: applicant.employeeId,
+            name: applicant.employee.name,
+            level: applicant.employee.level,
+            currentPosition: currentAssignment?.position || 'Not assigned',
+            service: applicant.vacancy.service,
+            group: applicant.vacancy.group,
+            subgroup: applicant.vacancy.subGroup,
+            dob: applicant.employee.dob,
+            appliedPosition: applicant.vacancy.position,
+            seniorityDate: applicant.employee.seniorityDate,
+            bigyapanEndDate: endDate,
+            yearsElapsed,
+            monthsElapsed,
+            daysElapsed,
+            seniorityMarks: applicant.seniorityMarks || 0
+        };
+
+        return seniorityDetails;
     }
 } 

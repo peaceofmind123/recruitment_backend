@@ -86,4 +86,9 @@ export class Vacancy {
         inverseJoinColumn: { name: 'qualification_qualification', referencedColumnName: 'qualification' }
     })
     additionalQualifications: Qualification[];
+
+    @ApiProperty({ description: 'Bigyapan end date', required: false })
+    @IsOptional()
+    @Column({ type: 'date', nullable: true })
+    bigyapanEndDate: Date;
 } 

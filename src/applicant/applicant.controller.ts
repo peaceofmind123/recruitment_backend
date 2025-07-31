@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { ApplicantService } from './applicant.service';
 import { CreateApplicantDto } from './dto/create-applicant.dto';
 import { Applicant } from './entities/applicant.entity';
+import { SeniorityDetailsDto } from './dto/seniority-details.dto';
 
 @ApiTags('applicants')
 @Controller('applicant')
@@ -93,5 +94,35 @@ export class ApplicantController {
         @Query('bigyapanNo') bigyapanNo: string
     ): Promise<void> {
         return this.applicantService.remove(+employeeId, bigyapanNo);
+    }
+
+    @Get('seniority-details')
+    @ApiOperation({ summary: 'Get seniority details for an applicant' })
+    @ApiQuery({
+        name: 'employeeId',
+        required: true,
+        description: 'Employee ID (4 digit number)',
+        type: Number
+    })
+    @ApiQuery({
+        name: 'bigyapanNo',
+        required: true,
+        description: 'Bigyapan number of the vacancy',
+        type: String
+    })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'Returns the seniority details for the applicant.',
+        type: SeniorityDetailsDto
+    })
+    @ApiResponse({
+        status: HttpStatus.NOT_FOUND,
+        description: 'Applicant not found or bigyapan end date not found.'
+    })
+    getSeniorityDetails(
+        @Query('employeeId') employeeId: string,
+        @Query('bigyapanNo') bigyapanNo: string
+    ): Promise<SeniorityDetailsDto> {
+        return this.applicantService.getSeniorityDetails(+employeeId, bigyapanNo);
     }
 } 

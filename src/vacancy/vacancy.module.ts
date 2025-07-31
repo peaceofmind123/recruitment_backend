@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Vacancy } from './entities/vacancy.entity';
 import { VacancyController } from './vacancy.controller';
@@ -8,6 +8,7 @@ import { ApplicantModule } from '../applicant/applicant.module';
 import { ApplicantService } from '../applicant/applicant.service';
 import { Applicant } from '../applicant/entities/applicant.entity';
 import { Employee } from '../employee/entities/employee.entity';
+import { EmployeeModule } from '../employee/employee.module';
 import { Qualification } from './entities/qualification.entity';
 import { QualificationController } from './qualification.controller';
 import { QualificationService } from './qualification.service';
@@ -18,7 +19,8 @@ import { PostDetailController } from './post-detail.controller';
 @Module({
     imports: [
         TypeOrmModule.forFeature([Vacancy, FiscalYear, Applicant, Employee, Qualification, PostDetail]),
-        ApplicantModule
+        forwardRef(() => ApplicantModule),
+        EmployeeModule
     ],
     controllers: [VacancyController, QualificationController, PostDetailController],
     providers: [VacancyService, ApplicantService, QualificationService, PostDetailService],

@@ -45,4 +45,13 @@ export class SeniorityDetailsDto {
 
     @ApiProperty({ description: 'Seniority marks' })
     seniorityMarks: number;
+
+    @ApiProperty({ description: 'Year marks (years * 3.75)' })
+    yearMarks: number;
+
+    @ApiProperty({ description: 'Month marks (remainder months * 3.75/12)' })
+    monthMarks: number;
+
+    @ApiProperty({ description: 'Day marks (remainder days * 3.75/365)' })
+    daysMarks: number;
 } 

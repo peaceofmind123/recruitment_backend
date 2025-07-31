@@ -93,6 +93,11 @@ export class ApplicantService {
         const monthsElapsed = Math.floor(remainingDays / (1000 * 60 * 60 * 24 * 30.44));
         const daysElapsed = Math.floor((remainingDays % (1000 * 60 * 60 * 24 * 30.44)) / (1000 * 60 * 60 * 24));
 
+        // Calculate marks
+        const yearMarks = yearsElapsed * 3.75;
+        const monthMarks = monthsElapsed * (3.75 / 12);
+        const daysMarks = daysElapsed * (3.75 / 365);
+
         const seniorityDetails: SeniorityDetailsDto = {
             employeeId: applicant.employeeId,
             name: applicant.employee.name,
@@ -108,7 +113,10 @@ export class ApplicantService {
             yearsElapsed,
             monthsElapsed,
             daysElapsed,
-            seniorityMarks: applicant.seniorityMarks || 0
+            seniorityMarks: applicant.seniorityMarks || 0,
+            yearMarks,
+            monthMarks,
+            daysMarks
         };
 
         return seniorityDetails;

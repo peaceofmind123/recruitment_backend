@@ -27,6 +27,7 @@ interface ExcelRow {
     'Sex': Sex;
     'Qualification': string;
     'Work Office': string;
+    'Jobs': string;
 }
 
 @Injectable()
@@ -185,6 +186,7 @@ export class EmployeeService {
             employee.sex = row['Sex'] || Sex.U;
             employee.education = row['Qualification'] || '';
             employee.workingOffice = row['Work Office'] || '';
+            employee.position = row['Jobs'] || '';
             employee.qualifications = qualifications;
 
             try {

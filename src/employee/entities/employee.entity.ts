@@ -37,6 +37,9 @@ export class Employee {
     @Column()
     workingOffice: string;
 
+    @Column({ nullable: true })
+    position: string;
+
     @ManyToMany(() => Qualification)
     @JoinTable({
         name: 'employee_qualifications',

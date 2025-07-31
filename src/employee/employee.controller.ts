@@ -22,6 +22,12 @@ export class EmployeeController {
         return this.employeeService.getServiceDetail();
     }
 
+    @Get('test-db')
+    @ApiOperation({ summary: 'Test database connection and schema' })
+    async testDatabaseConnection() {
+        return this.employeeService.testDatabaseConnection();
+    }
+
     @Post('upload-service-detail')
     @ApiOperation({ summary: 'Upload service detail Excel file' })
     @ApiConsumes('multipart/form-data')

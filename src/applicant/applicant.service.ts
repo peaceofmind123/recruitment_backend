@@ -79,14 +79,14 @@ export class ApplicantService {
         // Calculate time elapsed between seniority date and bigyapan end date
         const seniorityDate = new Date(applicant.employee.seniorityDate);
         const bigyapanEndDate = applicant.vacancy.bigyapanEndDate;
-        
+
         if (!bigyapanEndDate) {
             throw new NotFoundException(`Bigyapan end date not found for vacancy ${bigyapanNo}`);
         }
 
         const endDate = new Date(bigyapanEndDate);
         const timeDiff = endDate.getTime() - seniorityDate.getTime();
-        
+
         // Calculate years, months, and days
         const yearsElapsed = Math.floor(timeDiff / (1000 * 60 * 60 * 24 * 365.25));
         const remainingDays = timeDiff % (1000 * 60 * 60 * 24 * 365.25);
@@ -97,7 +97,7 @@ export class ApplicantService {
             employeeId: applicant.employeeId,
             name: applicant.employee.name,
             level: applicant.employee.level,
-            currentPosition: currentAssignment?.position || 'Not assigned',
+            currentPosition: applicant.employee.position || currentAssignment?.position || 'Not assigned',
             service: applicant.vacancy.service,
             group: applicant.vacancy.group,
             subgroup: applicant.vacancy.subGroup,

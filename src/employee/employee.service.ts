@@ -130,15 +130,6 @@ export class EmployeeService {
             throw new Error('No file uploaded or file is empty');
         }
 
-        // Test database connection
-        try {
-            const testQuery = await this.employeeRepository.count();
-            console.log('Database connection test - Total employees in DB:', testQuery);
-        } catch (error) {
-            console.error('Database connection error:', error);
-            throw error;
-        }
-
         // Ensure directory exists
         const dirPath = path.join(process.cwd(), 'src', 'assets', 'detail-reports');
         if (!fs.existsSync(dirPath)) {
@@ -160,18 +151,9 @@ export class EmployeeService {
 
         const data = XLSX.utils.sheet_to_json<ExcelRow>(worksheet);
 
-        console.log('Total rows found:', data.length);
-        console.log('Sample row data:', data[0]);
-        console.log('Available columns in first row:', Object.keys(data[0] || {}));
-
         // Process each row and save to database
-        let processedCount = 0;
-        let skippedCount = 0;
-
         for (const row of data) {
             if (!row['EmpNo'] || !row['Full Name']) {
-                console.log('Skipping row - missing EmpNo or Full Name:', row);
-                skippedCount++;
                 continue; // Skip rows without required fields
             }
 
@@ -179,7 +161,6 @@ export class EmployeeService {
             const seniorityDate = this.parseDate(row['Seniority Date']);
 
             if (!dob || !seniorityDate) {
-                console.warn(`Skipping row for employee ${row['EmpNo']} due to invalid dates`);
                 continue;
             }
 
@@ -213,22 +194,16 @@ export class EmployeeService {
             // Try different possible column names for Jobs/Position
             const jobsValue = row['Jobs'] || row['Job'] || row['Position'] || row['Current Position'] || '';
             employee.position = jobsValue;
-            console.log(`Employee ${row['EmpNo']} - Jobs field value: "${jobsValue}", Position set to: "${employee.position}"`);
 
             employee.qualifications = qualifications;
 
             try {
-                console.log(`Saving employee ${row['EmpNo']} with position: ${employee.position}`);
                 await this.employeeRepository.save(employee);
-                console.log(`Successfully saved employee ${row['EmpNo']}`);
-                processedCount++;
             } catch (error) {
                 console.error(`Error saving employee ${row['EmpNo']}:`, error);
                 throw error;
             }
         }
-
-        console.log(`Upload completed. Processed: ${processedCount}, Skipped: ${skippedCount}`);
     }
 
     async filterByEmployeeIds(filterDto: FilterByEmployeeIdDto): Promise<Employee[]> {
@@ -910,38 +885,5 @@ export class EmployeeService {
             employees,
             totalCount: employees.length
         };
-    }
-
-    // Test method to check database connection and schema
-    async testDatabaseConnection(): Promise<any> {
-        try {
-            // Test basic query
-            const count = await this.employeeRepository.count();
-            console.log('Database connection test - Total employees:', count);
-
-            // Test if we can create a simple employee
-            const testEmployee = new Employee();
-            testEmployee.employeeId = 9999;
-            testEmployee.name = 'Test Employee';
-            testEmployee.dob = new Date();
-            testEmployee.seniorityDate = new Date();
-            testEmployee.level = 1;
-            testEmployee.sex = Sex.U;
-            testEmployee.education = 'Test Education';
-            testEmployee.workingOffice = 'Test Office';
-            testEmployee.position = 'Test Position';
-
-            const savedEmployee = await this.employeeRepository.save(testEmployee);
-            console.log('Test employee saved successfully:', savedEmployee);
-
-            // Clean up - delete the test employee
-            await this.employeeRepository.delete({ employeeId: 9999 });
-            console.log('Test employee deleted successfully');
-
-            return { success: true, message: 'Database connection and schema are working correctly' };
-        } catch (error) {
-            console.error('Database test failed:', error);
-            return { success: false, error: error.message };
-        }
     }
 } 

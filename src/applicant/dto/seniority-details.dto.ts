@@ -13,6 +13,9 @@ export class SeniorityDetailsDto {
     @ApiProperty({ description: 'Current position from service detail' })
     currentPosition: string;
 
+    @ApiProperty({ description: 'Working office' })
+    workingOffice: string;
+
     @ApiProperty({ description: 'Service from vacancy' })
     service: string;
 

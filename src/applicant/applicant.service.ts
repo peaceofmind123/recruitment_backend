@@ -103,6 +103,7 @@ export class ApplicantService {
             name: applicant.employee.name,
             level: applicant.employee.level,
             currentPosition: applicant.employee.position || currentAssignment?.position || 'Not assigned',
+            workingOffice: applicant.employee.workingOffice,
             service: applicant.vacancy.service,
             group: applicant.vacancy.group,
             subgroup: applicant.vacancy.subGroup,

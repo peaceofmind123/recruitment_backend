@@ -4,6 +4,7 @@ import { ApplicantService } from './applicant.service';
 import { CreateApplicantDto } from './dto/create-applicant.dto';
 import { Applicant } from './entities/applicant.entity';
 import { SeniorityDetailsDto } from './dto/seniority-details.dto';
+import { ScorecardDto } from './dto/scorecard.dto';
 
 @ApiTags('applicants')
 @Controller('applicant')
@@ -96,8 +97,8 @@ export class ApplicantController {
         return this.applicantService.remove(+employeeId, bigyapanNo);
     }
 
-    @Get('seniority-details')
-    @ApiOperation({ summary: 'Get seniority details for an applicant' })
+    @Get('scorecard')
+    @ApiOperation({ summary: 'Get scorecard for an applicant with assignment details and calculated time periods' })
     @ApiQuery({
         name: 'employeeId',
         required: true,
@@ -112,17 +113,17 @@ export class ApplicantController {
     })
     @ApiResponse({
         status: HttpStatus.OK,
-        description: 'Returns the seniority details for the applicant.',
-        type: SeniorityDetailsDto
+        description: 'Returns the scorecard for the applicant with assignment details and calculated time periods.',
+        type: ScorecardDto
     })
     @ApiResponse({
         status: HttpStatus.NOT_FOUND,
         description: 'Applicant not found or bigyapan end date not found.'
     })
-    getSeniorityDetails(
+    getScorecard(
         @Query('employeeId') employeeId: string,
         @Query('bigyapanNo') bigyapanNo: string
-    ): Promise<SeniorityDetailsDto> {
-        return this.applicantService.getSeniorityDetails(+employeeId, bigyapanNo);
+    ): Promise<ScorecardDto> {
+        return this.applicantService.getScorecard(+employeeId, bigyapanNo);
     }
 } 

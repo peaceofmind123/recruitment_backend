@@ -1,0 +1,22 @@
+{
+    "name": "date-converter",
+    "version": "1.0.0",
+    "description": "Script to convert English dates to Nepali dates using hamropatro API",
+    "main": "date_converter.js",
+    "scripts": {
+        "start": "node date_converter.js",
+        "test": "node test_converter.js"
+    },
+    "dependencies": {
+        "axios": "^1.6.0",
+        "form-data": "^4.0.0"
+    },
+    "keywords": [
+        "nepali",
+        "date",
+        "converter",
+        "api"
+    ],
+    "author": "",
+    "license": "MIT"
+}

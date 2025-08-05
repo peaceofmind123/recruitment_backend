@@ -67,6 +67,18 @@ export class AssignmentDetailDto {
 
     @ApiProperty({ description: 'Calculated number of days from totalNumDays' })
     numDays: number;
+
+    @ApiProperty({ description: 'District of the work office', required: false })
+    district?: string;
+
+    @ApiProperty({ description: 'District category', required: false })
+    districtCategory?: string;
+
+    @ApiProperty({ description: 'Category marks for employee gender', required: false })
+    categoryMarks?: number;
+
+    @ApiProperty({ description: 'Category marks type (old/new)', required: false })
+    categoryMarksType?: string;
 }
 
 export class ScorecardDto {

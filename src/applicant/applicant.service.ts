@@ -8,6 +8,9 @@ import { ScorecardDto, AssignmentDetailDto } from './dto/scorecard.dto';
 import { Employee } from '../employee/entities/employee.entity';
 import { Vacancy } from '../vacancy/entities/vacancy.entity';
 import { AssignmentDetail } from '../employee/entities/assignment-detail.entity';
+import { Office } from '../common/entities/office.entity';
+import { District } from '../common/entities/district.entity';
+import { CategoryMarks } from '../common/entities/category-marks.entity';
 
 @Injectable()
 export class ApplicantService {
@@ -20,6 +23,12 @@ export class ApplicantService {
         private vacancyRepository: Repository<Vacancy>,
         @InjectRepository(AssignmentDetail)
         private assignmentDetailRepository: Repository<AssignmentDetail>,
+        @InjectRepository(Office)
+        private officeRepository: Repository<Office>,
+        @InjectRepository(District)
+        private districtRepository: Repository<District>,
+        @InjectRepository(CategoryMarks)
+        private categoryMarksRepository: Repository<CategoryMarks>,
     ) { }
 
     async create(createApplicantDto: CreateApplicantDto): Promise<Applicant> {
@@ -163,13 +172,69 @@ export class ApplicantService {
         const monthMarks = monthsElapsed * (3.75 / 12);
         const daysMarks = daysElapsed * (3.75 / 365);
 
-        // Process assignment details with calculated time periods
-        const assignmentDetails: AssignmentDetailDto[] = assignments.map(assignment => {
+        // Process assignment details with calculated time periods and additional data
+        const assignmentDetails: AssignmentDetailDto[] = await Promise.all(assignments.map(async (assignment) => {
             const totalDays = assignment.totalNumDays || 0;
             const years = Math.floor(totalDays / 365.25);
             const remainingDaysAfterYears = totalDays % 365.25;
             const months = Math.floor(remainingDaysAfterYears / 30.44);
             const days = Math.floor(remainingDaysAfterYears % 30.44);
+
+            // Get office information
+            const office = await this.officeRepository.findOne({
+                where: { name: assignment.workOffice }
+            });
+
+            let district: string | undefined = undefined;
+            let districtCategory: string | undefined = undefined;
+            let categoryMarks: number | undefined = undefined;
+            let categoryMarksType: string | undefined = undefined;
+
+            if (office) {
+                district = office.district;
+
+                // Get district information
+                const districtEntity = await this.districtRepository.findOne({
+                    where: { name: office.district }
+                });
+
+                if (districtEntity) {
+                    districtCategory = districtEntity.category;
+
+                    // Get category marks for the employee's gender
+                    // Convert sex to gender format
+                    const gender: string | undefined = applicant.employee.sex === 'M' ? 'male' : applicant.employee.sex === 'F' ? 'female' : undefined;
+
+                    // Try to find category marks for the specific category and gender
+                    let categoryMarksEntity: CategoryMarks | null = null;
+
+                    if (gender) {
+                        categoryMarksEntity = await this.categoryMarksRepository.findOne({
+                            where: {
+                                category: districtEntity.category,
+                                gender: gender
+                            }
+                        });
+                    }
+
+                    // If not found, try to find any category marks for this category (for 'new' type)
+                    if (!categoryMarksEntity) {
+                        categoryMarksEntity = await this.categoryMarksRepository.findOne({
+                            where: {
+                                category: districtEntity.category,
+                                type: 'new'
+                            }
+                        });
+                    }
+
+
+
+                    if (categoryMarksEntity) {
+                        categoryMarks = categoryMarksEntity.marks;
+                        categoryMarksType = categoryMarksEntity.type;
+                    }
+                }
+            }
 
             return {
                 employeeId: assignment.employeeId,
@@ -193,9 +258,13 @@ export class ApplicantService {
                 totalNumDays: assignment.totalNumDays,
                 numYears: years,
                 numMonths: months,
-                numDays: days
+                numDays: days,
+                district,
+                districtCategory,
+                categoryMarks,
+                categoryMarksType
             };
-        });
+        }));
 
         const scorecard: ScorecardDto = {
             employeeId: applicant.employeeId,

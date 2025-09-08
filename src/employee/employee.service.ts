@@ -214,6 +214,12 @@ export class EmployeeService {
         });
     }
 
+    async getEmployeeById(employeeId: number): Promise<Employee | null> {
+        return this.employeeRepository.findOne({
+            where: { employeeId }
+        });
+    }
+
     private parseExcelDate(dateStr: string): string {
         if (!dateStr) return '';
 

@@ -411,7 +411,10 @@ export class VacancyService {
             const assignments = applicant.employee?.assignments || [];
             let geoSum: number | null = null;
             if (assignments.length > 0) {
-                geoSum = assignments.reduce((acc, v) => acc + (Number(v.totalGeographicalMarks) || 0), 0);
+                // Only consider assignments with the same level as the employee
+                geoSum = assignments
+                    .filter(assignment => assignment.level === applicant.employee.level)
+                    .reduce((acc, v) => acc + (Number(v.totalGeographicalMarks) || 0), 0);
             }
             applicant.geographicalMarks = geoSum;
             await this.applicantRepository.save(applicant);

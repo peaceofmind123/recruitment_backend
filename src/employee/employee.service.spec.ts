@@ -182,13 +182,35 @@ describe('EmployeeService', () => {
 
     describe('calculateGeographicalMarks', () => {
         it('should return 0 if missing dates', async () => {
-            const assignment = { id: '1', startDateBS: '', endDateBS: '', workOffice: '' } as AssignmentDetailDto;
+            const assignment = {
+                employeeId: 1,
+                startDateBS: '',
+                endDateBS: '',
+                workOffice: '',
+                position: '',
+                jobs: '',
+                function: '',
+                empCategory: '',
+                empType: '',
+                level: 1
+            } as AssignmentDetailDto;
             const result = await service['calculateGeographicalMarks'](assignment, 'male');
             expect(result.totalGeographicalMarks).toBe(0);
         });
         it('should return 0 if invalid BS dates', async () => {
             service['isValidBSDate'] = jest.fn().mockReturnValue(false);
-            const assignment = { id: '1', startDateBS: 'invalid', endDateBS: 'invalid', workOffice: '' } as AssignmentDetailDto;
+            const assignment = {
+                employeeId: 1,
+                startDateBS: 'invalid',
+                endDateBS: 'invalid',
+                workOffice: '',
+                position: '',
+                jobs: '',
+                function: '',
+                empCategory: '',
+                empType: '',
+                level: 1
+            } as AssignmentDetailDto;
             const result = await service['calculateGeographicalMarks'](assignment, 'male');
             expect(result.totalGeographicalMarks).toBe(0);
         });
@@ -218,7 +240,18 @@ describe('EmployeeService', () => {
             service['marksAccOld'] = jest.fn().mockResolvedValueOnce(2);
             service['marksAccNew'] = jest.fn().mockResolvedValueOnce(3);
 
-            const assignment = { id: '1', startDateBS: '2078/01/01', endDateBS: '2080/01/01', workOffice: '' } as AssignmentDetailDto;
+            const assignment = {
+                employeeId: 1,
+                startDateBS: '2078/01/01',
+                endDateBS: '2080/01/01',
+                workOffice: '',
+                position: '',
+                jobs: '',
+                function: '',
+                empCategory: '',
+                empType: '',
+                level: 1
+            } as AssignmentDetailDto;
             const result = await service['calculateGeographicalMarks'](assignment, 'male');
             expect(result.totalGeographicalMarks).toBe(5);
         });
@@ -227,7 +260,18 @@ describe('EmployeeService', () => {
             service['parseBSDate'] = jest.fn().mockReturnValue({ getDateObject: () => new Date(2022, 2, 30) });
             service['calculateDaysBetweenBSDates'] = jest.fn().mockReturnValue(10);
             service['marksAccNew'] = jest.fn().mockResolvedValue(3);
-            const assignment = { id: '1', startDateBS: '2078/01/01', endDateBS: '2078/12/30', workOffice: '' } as AssignmentDetailDto;
+            const assignment = {
+                employeeId: 1,
+                startDateBS: '2078/01/01',
+                endDateBS: '2078/12/30',
+                workOffice: '',
+                position: '',
+                jobs: '',
+                function: '',
+                empCategory: '',
+                empType: '',
+                level: 1
+            } as AssignmentDetailDto;
             const result = await service['calculateGeographicalMarks'](assignment, 'male');
             expect(result.totalGeographicalMarks).toBe(3);
         });

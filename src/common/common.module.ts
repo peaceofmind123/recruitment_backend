@@ -7,6 +7,7 @@ import { Office } from './entities/office.entity';
 import { CategoryMarks } from './entities/category-marks.entity';
 import { DistrictDataService } from './district-data.service';
 import { DistrictDataController } from './district-data.controller';
+import { UtilsController } from './utils.controller';
 
 @Module({
     imports: [
@@ -14,7 +15,7 @@ import { DistrictDataController } from './district-data.controller';
         TypeOrmModule.forFeature([District, Office, CategoryMarks]),
     ],
     providers: [LoggerMiddleware, DistrictDataService],
-    controllers: [DistrictDataController],
+    controllers: [DistrictDataController, UtilsController],
     exports: [LoggerMiddleware, TypeOrmModule],
 })
 export class CommonModule implements NestModule {

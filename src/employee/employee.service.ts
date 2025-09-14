@@ -17,6 +17,7 @@ import { CategoryMarks } from '../common/entities/category-marks.entity';
 import { AssignmentDetail } from './entities/assignment-detail.entity';
 import { EmployeeServiceDetailResponseDto } from './dto/employee-detail-response.dto';
 import { EmployeeBasicDetailsDto } from './dto/employee-basic-details.dto';
+import { EmployeeSeniorityDataDto } from './dto/employee-seniority-data.dto';
 const NepaliDate = require('nepali-datetime');
 
 interface ExcelRow {
@@ -918,5 +919,29 @@ export class EmployeeService {
             dob: dobStr,
             group,
         };
+    }
+
+    async getEmployeeSeniorityData(employeeId: number): Promise<EmployeeSeniorityDataDto | null> {
+        const employee = await this.employeeRepository.findOne({ where: { employeeId } });
+        if (!employee || !employee.seniorityDate) return null;
+
+        // Use native dynamic import to load ESM in CommonJS context
+        const lib: any = await (eval('import("nepali-date-library")'));
+        const NepaliDateLib = lib.NepaliDate || (lib.default && lib.default.NepaliDate);
+
+        const seniority = new NepaliDateLib(new Date(employee.seniorityDate));
+        const today = new NepaliDateLib();
+        const days = today.diff(seniority, 'day');
+        const months = today.diff(seniority, 'month');
+        const years = Math.floor(months / 12);
+        const monthsElapsed = months - years * 12; // remaining months
+        const daysElapsed = days - years * 365 - monthsElapsed * 30; // remaining days
+        return {
+            seniorityDateBS: seniority.format('YYYY-MM-DD'),
+            years,
+            months: monthsElapsed,
+            days: daysElapsed
+        };
+
     }
 } 

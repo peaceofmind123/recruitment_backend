@@ -6,6 +6,7 @@ import { FilterByEmployeeIdDto } from './dto/filter-by-employee-id.dto';
 import { EmployeeDetailDto } from './dto/employee-detail.dto';
 import { EmployeeDetailResponseDto, EmployeeServiceDetailResponseDto } from './dto/employee-detail-response.dto';
 import { EmployeeBasicDetailsDto } from './dto/employee-basic-details.dto';
+import { EmployeeSeniorityDataDto } from './dto/employee-seniority-data.dto';
 
 @ApiTags('Employee')
 @Controller('employee')
@@ -127,5 +128,21 @@ export class EmployeeController {
             throw new NotFoundException('Employee not found');
         }
         return details;
+    }
+
+    @Get('seniority-data')
+    @ApiOperation({ summary: 'Get seniority data in BS (years, months, days since seniority date)' })
+    @ApiQuery({ name: 'employeeId', type: Number, required: true })
+    @ApiResponse({ status: 200, type: EmployeeSeniorityDataDto })
+    async getEmployeeSeniorityData(@Query('employeeId') employeeId: string): Promise<EmployeeSeniorityDataDto> {
+        const id = parseInt(employeeId, 10);
+        if (isNaN(id)) {
+            throw new NotFoundException('Invalid employeeId');
+        }
+        const data = await this.employeeService.getEmployeeSeniorityData(id);
+        if (!data) {
+            throw new NotFoundException('Employee not found or missing seniority date');
+        }
+        return data;
     }
 } 

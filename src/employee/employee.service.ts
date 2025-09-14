@@ -223,6 +223,13 @@ export class EmployeeService {
         });
     }
 
+    async getEmployeeAssignments(employeeId: number): Promise<AssignmentDetail[]> {
+        return this.assignmentDetailRepository.find({
+            where: { employeeId },
+            order: { startDateBS: 'ASC' }
+        });
+    }
+
     private parseExcelDate(dateStr: string): string {
         if (!dateStr) return '';
 

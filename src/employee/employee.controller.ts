@@ -1,10 +1,11 @@
-import { Controller, Post, UploadedFile, UseInterceptors, Get, Query, Body } from '@nestjs/common';
+import { Controller, Post, UploadedFile, UseInterceptors, Get, Query, Body, NotFoundException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiConsumes, ApiOperation, ApiTags, ApiBody, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { EmployeeService } from './employee.service';
 import { FilterByEmployeeIdDto } from './dto/filter-by-employee-id.dto';
 import { EmployeeDetailDto } from './dto/employee-detail.dto';
 import { EmployeeDetailResponseDto, EmployeeServiceDetailResponseDto } from './dto/employee-detail-response.dto';
+import { EmployeeBasicDetailsDto } from './dto/employee-basic-details.dto';
 
 @ApiTags('Employee')
 @Controller('employee')
@@ -110,5 +111,21 @@ export class EmployeeController {
             employeeDetails,
             employeeCount: employeeDetails.length
         };
+    }
+
+    @Get('details')
+    @ApiOperation({ summary: 'Get basic employee details by employeeId' })
+    @ApiQuery({ name: 'employeeId', type: Number, required: true })
+    @ApiResponse({ status: 200, type: EmployeeBasicDetailsDto })
+    async getEmployeeDetails(@Query('employeeId') employeeId: string): Promise<EmployeeBasicDetailsDto> {
+        const id = parseInt(employeeId, 10);
+        if (isNaN(id)) {
+            throw new NotFoundException('Invalid employeeId');
+        }
+        const details = await this.employeeService.getEmployeeBasicDetails(id);
+        if (!details) {
+            throw new NotFoundException('Employee not found');
+        }
+        return details;
     }
 } 

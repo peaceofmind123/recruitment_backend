@@ -16,6 +16,7 @@ import { District } from '../common/entities/district.entity';
 import { CategoryMarks } from '../common/entities/category-marks.entity';
 import { AssignmentDetail } from './entities/assignment-detail.entity';
 import { EmployeeServiceDetailResponseDto } from './dto/employee-detail-response.dto';
+import { EmployeeBasicDetailsDto } from './dto/employee-basic-details.dto';
 const NepaliDate = require('nepali-datetime');
 
 interface ExcelRow {
@@ -890,6 +891,32 @@ export class EmployeeService {
         return {
             employees,
             totalCount: employees.length
+        };
+    }
+
+    async getEmployeeBasicDetails(employeeId: number): Promise<EmployeeBasicDetailsDto | null> {
+        const employee = await this.employeeRepository.findOne({ where: { employeeId } });
+        if (!employee) return null;
+
+        const rawPosition = employee.position || '';
+        let group = '';
+        let position = rawPosition;
+        const parts = rawPosition.split('.');
+        if (parts.length >= 2 && parts[0] && parts[1]) {
+            group = parts[0];
+            position = parts.slice(1).join('.');
+        }
+
+        const dobStr = employee.dob ? new Date(employee.dob).toISOString().split('T')[0] : '';
+
+        return {
+            employeeId: employee.employeeId,
+            name: employee.name,
+            level: employee.level,
+            workingOffice: employee.workingOffice,
+            position,
+            dob: dobStr,
+            group,
         };
     }
 } 

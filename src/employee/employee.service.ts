@@ -27,6 +27,7 @@ interface ExcelRow {
     'Date Of Birth': string;
     'Seniority Date': string;
     'Level No': number;
+    'Level'?: number | string;
     'Sex': Sex;
     'Qualification': string;
     'Work Office': string;
@@ -189,7 +190,9 @@ export class EmployeeService {
             employee.name = row['Full Name'];
             employee.dob = dob;
             employee.seniorityDate = seniorityDate;
-            employee.level = row['Level No'] || 0;
+            const levelRaw: any = (row['Level No'] ?? row['Level'] ?? 0);
+            const levelNum = typeof levelRaw === 'string' ? parseInt(levelRaw, 10) : Number(levelRaw);
+            employee.level = isNaN(levelNum) ? 0 : levelNum;
             employee.sex = row['Sex'] || Sex.U;
             employee.education = row['Qualification'] || '';
             employee.workingOffice = row['Work Office'] || '';
@@ -586,75 +589,90 @@ export class EmployeeService {
                     employeeId: parseInt(currentEmployee.employeeId || '0'),
                 };
 
-                // Map the columns based on headers
+                // Map the columns based on headers (robust to casing/spacing variants)
                 assignmentHeaders.forEach((header, index) => {
                     const rawValue = row[index];
-                    const value = rawValue?.toString() || '';
+                    const value = rawValue?.toString().trim() || '';
+
+                    const h = (header ?? '').toString().trim().toLowerCase();
 
                     // Don't skip empty values for date fields as they might be Excel date numbers
                     if (!value && !this.isExcelDateNumber(rawValue)) return;
 
-                    switch (header) {
-                        case 'Position':
-                            assignment.position = value;
-                            break;
-                        case 'Jobs':
-                            assignment.jobs = value;
-                            break;
-                        case 'Function':
-                            assignment.function = value;
-                            break;
-                        case 'Emp. Category':
-                            assignment.empCategory = value;
-                            break;
-                        case 'Emp. Type':
-                            assignment.empType = value;
-                            break;
-                        case 'Work Office':
-                            assignment.workOffice = value;
-                            break;
-                        case 'Start Date BS':
-                            if (this.isExcelDateNumber(rawValue)) {
-                                assignment.startDateBS = this.convertExcelDateToBS(rawValue);
-                            } else {
-                                assignment.startDateBS = value;
-                            }
-                            break;
-                        case 'End Date BS':
-                            if (this.isExcelDateNumber(rawValue)) {
-                                assignment.endDateBS = this.convertExcelDateToBS(rawValue);
-                            } else {
-                                assignment.endDateBS = value;
-                            }
-                            break;
-                        case 'Seniority Date BS':
-                            if (this.isExcelDateNumber(rawValue)) {
-                                assignment.seniorityDateBS = this.convertExcelDateToBS(rawValue);
-                            } else {
-                                assignment.seniorityDateBS = value;
-                            }
-                            break;
-                        case 'Level':
-                            assignment.level = parseInt(value) || 0;
-                            break;
-                        case 'Perm. Level Date BS':
-                            if (this.isExcelDateNumber(rawValue)) {
-                                assignment.permLevelDateBS = this.convertExcelDateToBS(rawValue);
-                            } else {
-                                assignment.permLevelDateBS = value;
-                            }
-                            break;
-                        case 'Reason':
-                            assignment.reasonForPosition = value;
-                            break;
-                        case 'Start Date':
-                            const startDate = this.parseExcelDate(value);
-                            assignment.startDate = startDate ? new Date(startDate) : undefined;
-                            break;
-                        case 'Seniority Date':
-                            const seniorityDate = this.parseExcelDate(value);
-                            assignment.seniorityDate = seniorityDate ? new Date(seniorityDate) : undefined;
-                            break;
+                    if (h === 'position') {
+                        assignment.position = value;
+                        return;
+                    }
+                    if (h === 'jobs' || h === 'job') {
+                        assignment.jobs = value;
+                        return;
+                    }
+                    if (h === 'function') {
+                        assignment.function = value;
+                        return;
+                    }
+                    if (h === 'emp. category' || h === 'emp category') {
+                        assignment.empCategory = value;
+                        return;
+                    }
+                    if (h === 'emp. type' || h === 'emp type') {
+                        assignment.empType = value;
+                        return;
+                    }
+                    if (h === 'work office') {
+                        assignment.workOffice = value;
+                        return;
+                    }
+                    if (h === 'start date bs') {
+                        if (this.isExcelDateNumber(rawValue)) {
+                            assignment.startDateBS = this.convertExcelDateToBS(rawValue);
+                        } else {
+                            assignment.startDateBS = value;
+                        }
+                        return;
+                    }
+                    if (h === 'end date bs') {
+                        if (this.isExcelDateNumber(rawValue)) {
+                            assignment.endDateBS = this.convertExcelDateToBS(rawValue);
+                        } else {
+                            assignment.endDateBS = value;
+                        }
+                        return;
+                    }
+                    if (h === 'seniority date bs') {
+                        if (this.isExcelDateNumber(rawValue)) {
+                            assignment.seniorityDateBS = this.convertExcelDateToBS(rawValue);
+                        } else {
+                            assignment.seniorityDateBS = value;
+                        }
+                        return;
+                    }
+                    if (h === 'level' || h === 'level no' || h === 'level number') {
+                        const levelNum = parseInt(value, 10);
+                        assignment.level = isNaN(levelNum) ? 0 : levelNum;
+                        return;
+                    }
+                    if (h === 'perm. level date bs' || h === 'perm level date bs') {
+                        if (this.isExcelDateNumber(rawValue)) {
+                            assignment.permLevelDateBS = this.convertExcelDateToBS(rawValue);
+                        } else {
+                            assignment.permLevelDateBS = value;
+                        }
+                        return;
+                    }
+                    if (h === 'reason') {
+                        assignment.reasonForPosition = value;
+                        return;
+                    }
+                    if (h === 'start date') {
+                        const startDate = this.parseExcelDate(value);
+                        assignment.startDate = startDate ? new Date(startDate) : undefined;
+                        return;
+                    }
+                    if (h === 'seniority date') {
+                        const seniorityDate = this.parseExcelDate(value);
+                        assignment.seniorityDate = seniorityDate ? new Date(seniorityDate) : undefined;
+                        return;
                     }
                 });
 
@@ -789,6 +807,20 @@ export class EmployeeService {
             } catch (error) {
                 console.error(`Error saving assignment for employeeId=${employee.employeeId}, startDateBS=${assignmentDto.startDateBS}, endDateBS=${assignmentDto.endDateBS}: ${error.message}`);
             }
+        }
+
+        // Update employee level based on current/latest assignment
+        try {
+            // Prefer assignment with no endDateBS (current assignment)
+            const currentAssignment = assignments.find(a => !a.endDateBS);
+            const fallbackAssignment = assignments[assignments.length - 1];
+            const derivedLevel = currentAssignment?.level ?? fallbackAssignment?.level ?? employee.level ?? 0;
+            if (typeof derivedLevel === 'number' && derivedLevel !== employee.level) {
+                employee.level = derivedLevel;
+                await this.employeeRepository.save(employee);
+            }
+        } catch (e) {
+            console.error(`Failed to update employee level for employeeId=${employee.employeeId}: ${e?.message || e}`);
         }
     }
 

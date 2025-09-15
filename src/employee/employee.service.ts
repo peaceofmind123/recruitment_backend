@@ -7,7 +7,7 @@ import * as XLSX from 'xlsx';
 import * as fs from 'fs';
 import * as path from 'path';
 import { FilterByEmployeeIdDto } from './dto/filter-by-employee-id.dto';
-import { In } from 'typeorm';
+import { In, MoreThanOrEqual, LessThanOrEqual, Between } from 'typeorm';
 import { EmployeeDetailDto } from './dto/employee-detail.dto';
 import { AssignmentDetailDto } from './dto/assignment-detail.dto';
 import * as crypto from 'crypto';
@@ -226,9 +226,17 @@ export class EmployeeService {
         });
     }
 
-    async getEmployeeAssignments(employeeId: number): Promise<AssignmentDetail[]> {
+    async getEmployeeAssignments(employeeId: number, startLevel?: number, endLevel?: number): Promise<AssignmentDetail[]> {
+        const where: any = { employeeId };
+        if (typeof startLevel === 'number' && typeof endLevel === 'number') {
+            where.level = Between(startLevel, endLevel);
+        } else if (typeof startLevel === 'number') {
+            where.level = MoreThanOrEqual(startLevel);
+        } else if (typeof endLevel === 'number') {
+            where.level = LessThanOrEqual(endLevel);
+        }
         return this.assignmentDetailRepository.find({
-            where: { employeeId },
+            where,
             order: { startDateBS: 'ASC' }
         });
     }

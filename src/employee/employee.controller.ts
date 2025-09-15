@@ -148,15 +148,23 @@ export class EmployeeController {
     }
 
     @Get('assignments')
-    @ApiOperation({ summary: 'Get all assignments for an employee' })
+    @ApiOperation({ summary: 'Get employee assignments, optionally filtered by level range' })
     @ApiQuery({ name: 'employeeId', type: Number, required: true })
+    @ApiQuery({ name: 'startLevel', type: Number, required: false })
+    @ApiQuery({ name: 'endLevel', type: Number, required: false })
     @ApiResponse({ status: 200, type: [AssignmentDetail] })
-    async getEmployeeAssignments(@Query('employeeId') employeeId: string): Promise<AssignmentDetail[]> {
+    async getEmployeeAssignments(
+        @Query('employeeId') employeeId: string,
+        @Query('startLevel') startLevel?: string,
+        @Query('endLevel') endLevel?: string,
+    ): Promise<AssignmentDetail[]> {
         const id = parseInt(employeeId, 10);
         if (isNaN(id)) {
             throw new NotFoundException('Invalid employeeId');
         }
-        const assignments = await this.employeeService.getEmployeeAssignments(id);
+        const start = startLevel !== undefined ? parseInt(startLevel, 10) : undefined;
+        const end = endLevel !== undefined ? parseInt(endLevel, 10) : undefined;
+        const assignments = await this.employeeService.getEmployeeAssignments(id, isNaN(start as any) ? undefined : start, isNaN(end as any) ? undefined : end);
         return assignments;
     }
 } 

@@ -63,3 +63,41 @@ export async function classifyBreakDateBS(startDateBS: string, endDateBS: string
     }
 }
 
+/**
+ * Return number of days before and after the breakDate within [startDateBS, endDateBS].
+ * If breakDateBS < startDateBS: before=0, after=diff(end,start)
+ * If breakDateBS > endDateBS: before=diff(end,start), after=0
+ * If start <= break <= end: before=diff(break,start), after=diff(end,break)
+ */
+export async function splitDaysByBreakBS(startDateBS: string, endDateBS: string, breakDateBS: string): Promise<{ numDaysBeforeBreak: number; numDaysAfterBreak: number; }> {
+    const lib: any = await (eval('import("nepali-date-library")'));
+    const NepaliDate = lib.NepaliDate || (lib.default && lib.default.NepaliDate);
+
+    const normalize = (s: string) => (s || '').replace(/\//g, '-');
+
+    try {
+        const start = new NepaliDate(normalize(startDateBS));
+        const end = new NepaliDate(normalize(endDateBS));
+        const brk = new NepaliDate(normalize(breakDateBS));
+
+        // Guard invalid range
+        if (end.isBefore(start)) {
+            return { numDaysBeforeBreak: 0, numDaysAfterBreak: 0 };
+        }
+
+        if (brk.isBefore(start)) {
+            return { numDaysBeforeBreak: 0, numDaysAfterBreak: end.diff(start, 'day') };
+        }
+        if (brk.isAfter(end)) {
+            return { numDaysBeforeBreak: end.diff(start, 'day'), numDaysAfterBreak: 0 };
+        }
+
+        // brk is between [start, end] inclusive
+        const numDaysBeforeBreak = brk.diff(start, 'day');
+        const numDaysAfterBreak = end.diff(brk, 'day');
+        return { numDaysBeforeBreak, numDaysAfterBreak };
+    } catch (err) {
+        throw new Error('Invalid BS date input to splitDaysByBreakBS');
+    }
+}
+

@@ -38,3 +38,28 @@ export async function formatBS(input: Date | string): Promise<string> {
 }
 
 
+export type BreakDatePosition = 'before' | 'between' | 'after';
+
+/**
+ * Determine whether breakDateBS lies before, between (inclusive), or after the [startDateBS, endDateBS] range.
+ * Dates are in BS (YYYY-MM-DD or YYYY/MM/DD). Uses nepali-date-library comparisons.
+ */
+export async function classifyBreakDateBS(startDateBS: string, endDateBS: string, breakDateBS: string): Promise<BreakDatePosition> {
+    const lib: any = await (eval('import("nepali-date-library")'));
+    const NepaliDate = lib.NepaliDate || (lib.default && lib.default.NepaliDate);
+
+    const normalize = (s: string) => (s || '').replace(/\//g, '-');
+
+    try {
+        const start = new NepaliDate(normalize(startDateBS));
+        const end = new NepaliDate(normalize(endDateBS));
+        const mid = new NepaliDate(normalize(breakDateBS));
+
+        if (mid.isBefore(start)) return 'before';
+        if (mid.isAfter(end)) return 'after';
+        return 'between';
+    } catch (err) {
+        throw new Error('Invalid BS date input to classifyBreakDateBS');
+    }
+}
+

@@ -8,6 +8,7 @@ import { EmployeeDetailResponseDto, EmployeeServiceDetailResponseDto } from './d
 import { EmployeeBasicDetailsDto } from './dto/employee-basic-details.dto';
 import { EmployeeSeniorityDataDto } from './dto/employee-seniority-data.dto';
 import { AssignmentDetail } from './entities/assignment-detail.entity';
+import { AssignmentWithExtrasDto } from './dto/assignment-with-extras.dto';
 
 @ApiTags('Employee')
 @Controller('employee')
@@ -152,19 +153,43 @@ export class EmployeeController {
     @ApiQuery({ name: 'employeeId', type: Number, required: true })
     @ApiQuery({ name: 'startLevel', type: Number, required: false })
     @ApiQuery({ name: 'endLevel', type: Number, required: false })
-    @ApiResponse({ status: 200, type: [AssignmentDetail] })
+    @ApiQuery({ name: 'defaultEndDateBS', type: String, required: false, description: 'Use for the last assignment if its endDateBS is null' })
+    @ApiResponse({ status: 200, description: 'Assignment list with district, category, and Y/M/D between BS dates', type: [AssignmentWithExtrasDto] })
     async getEmployeeAssignments(
         @Query('employeeId') employeeId: string,
         @Query('startLevel') startLevel?: string,
         @Query('endLevel') endLevel?: string,
-    ): Promise<AssignmentDetail[]> {
+        @Query('defaultEndDateBS') defaultEndDateBS?: string,
+    ) {
         const id = parseInt(employeeId, 10);
         if (isNaN(id)) {
             throw new NotFoundException('Invalid employeeId');
         }
         const start = startLevel !== undefined ? parseInt(startLevel, 10) : undefined;
         const end = endLevel !== undefined ? parseInt(endLevel, 10) : undefined;
-        const assignments = await this.employeeService.getEmployeeAssignments(id, isNaN(start as any) ? undefined : start, isNaN(end as any) ? undefined : end);
-        return assignments;
+        return this.employeeService.getEmployeeAssignmentsWithExtras(id, isNaN(start as any) ? undefined : start, isNaN(end as any) ? undefined : end, defaultEndDateBS);
+    }
+
+    // Alias endpoint: singular form
+    @Get('assignment')
+    @ApiOperation({ summary: 'Alias of GET /employee/assignments with the same response' })
+    @ApiQuery({ name: 'employeeId', type: Number, required: true })
+    @ApiQuery({ name: 'startLevel', type: Number, required: false })
+    @ApiQuery({ name: 'endLevel', type: Number, required: false })
+    @ApiQuery({ name: 'defaultEndDateBS', type: String, required: false, description: 'Use for the last assignment if its endDateBS is null' })
+    @ApiResponse({ status: 200, type: [AssignmentWithExtrasDto] })
+    async getEmployeeAssignmentAlias(
+        @Query('employeeId') employeeId: string,
+        @Query('startLevel') startLevel?: string,
+        @Query('endLevel') endLevel?: string,
+        @Query('defaultEndDateBS') defaultEndDateBS?: string,
+    ) {
+        const id = parseInt(employeeId, 10);
+        if (isNaN(id)) {
+            throw new NotFoundException('Invalid employeeId');
+        }
+        const start = startLevel !== undefined ? parseInt(startLevel, 10) : undefined;
+        const end = endLevel !== undefined ? parseInt(endLevel, 10) : undefined;
+        return this.employeeService.getEmployeeAssignmentsWithExtras(id, isNaN(start as any) ? undefined : start, isNaN(end as any) ? undefined : end, defaultEndDateBS);
     }
 } 

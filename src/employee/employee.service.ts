@@ -241,6 +241,56 @@ export class EmployeeService {
         });
     }
 
+    /**
+     * Get employee assignments with district, category, and Y/M/D diff (BS)
+     */
+    async getEmployeeAssignmentsWithExtras(employeeId: number, startLevel?: number, endLevel?: number, defaultEndDateBS?: string) {
+        const assignments = await this.getEmployeeAssignments(employeeId, startLevel, endLevel);
+
+        const lastIndex = assignments.length - 1;
+        const normalizedDefaultEnd = defaultEndDateBS ? defaultEndDateBS.replace(/-/g, '/') : undefined;
+
+        const result = await Promise.all(assignments.map(async (a, idx) => {
+            // Look up district and category from workOffice -> Office -> District
+            let district: string | undefined = undefined;
+            let category: string | undefined = undefined;
+            const office = await this.officeRepository.findOne({ where: { name: a.workOffice } });
+            if (office) {
+                district = office.district;
+                const districtEntity = await this.districtRepository.findOne({ where: { name: office.district } });
+                if (districtEntity) {
+                    category = districtEntity.category;
+                }
+            }
+
+            // Compute years, months, days between BS dates using utils. Fallbacks to 0.
+            let years = 0, months = 0, days = 0;
+            const effectiveEndDateBS = (!a.endDateBS && idx === lastIndex && normalizedDefaultEnd && this.isValidBSDate(normalizedDefaultEnd))
+                ? normalizedDefaultEnd
+                : a.endDateBS;
+
+            if (a.startDateBS && effectiveEndDateBS && this.isValidBSDate(a.startDateBS) && this.isValidBSDate(effectiveEndDateBS)) {
+                try {
+                    const diff = await diffNepaliYMD(a.startDateBS, effectiveEndDateBS);
+                    years = diff.years;
+                    months = diff.months;
+                    days = diff.days;
+                } catch { }
+            }
+
+            return {
+                ...a,
+                district,
+                category,
+                years,
+                months,
+                days,
+            } as any;
+        }));
+
+        return result;
+    }
+
     private parseExcelDate(dateStr: string): string {
         if (!dateStr) return '';
 

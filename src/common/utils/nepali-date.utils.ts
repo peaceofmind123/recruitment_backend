@@ -69,7 +69,7 @@ export async function classifyBreakDateBS(startDateBS: string, endDateBS: string
  * If breakDateBS > endDateBS: before=diff(end,start), after=0
  * If start <= break <= end: before=diff(break,start), after=diff(end,break)
  */
-export async function splitDaysByBreakBS(startDateBS: string, endDateBS: string, breakDateBS: string): Promise<{ numDaysBeforeBreak: number; numDaysAfterBreak: number; }> {
+export async function splitDaysByBreakBS(startDateBS: string, endDateBS: string, breakDateBS: string): Promise<{ numDaysBeforeBreak: number; numDaysAfterBreak: number; totalNumDays: number; }> {
     const lib: any = await (eval('import("nepali-date-library")'));
     const NepaliDate = lib.NepaliDate || (lib.default && lib.default.NepaliDate);
 
@@ -82,20 +82,22 @@ export async function splitDaysByBreakBS(startDateBS: string, endDateBS: string,
 
         // Guard invalid range
         if (end.isBefore(start)) {
-            return { numDaysBeforeBreak: 0, numDaysAfterBreak: 0 };
+            return { numDaysBeforeBreak: 0, numDaysAfterBreak: 0, totalNumDays: 0 };
         }
 
+        const totalNumDays = end.diff(start, 'day');
+
         if (brk.isBefore(start)) {
-            return { numDaysBeforeBreak: 0, numDaysAfterBreak: end.diff(start, 'day') };
+            return { numDaysBeforeBreak: 0, numDaysAfterBreak: totalNumDays, totalNumDays };
         }
         if (brk.isAfter(end)) {
-            return { numDaysBeforeBreak: end.diff(start, 'day'), numDaysAfterBreak: 0 };
+            return { numDaysBeforeBreak: totalNumDays, numDaysAfterBreak: 0, totalNumDays };
         }
 
         // brk is between [start, end] inclusive
         const numDaysBeforeBreak = brk.diff(start, 'day');
         const numDaysAfterBreak = end.diff(brk, 'day');
-        return { numDaysBeforeBreak, numDaysAfterBreak };
+        return { numDaysBeforeBreak, numDaysAfterBreak, totalNumDays };
     } catch (err) {
         throw new Error('Invalid BS date input to splitDaysByBreakBS');
     }

@@ -253,6 +253,8 @@ export class EmployeeService {
         const normalizedTodayEnd = todayBS ? todayBS.replace(/-/g, '/') : undefined;
         const breakDateBS = '2079/03/31';
         const nextBreakDateBS = '2079/03/32';
+        const breakNdMain = this.parseBSDate(breakDateBS);
+        const breakADMain = breakNdMain ? breakNdMain.getDateObject() : null;
 
         const expanded = await Promise.all(assignments.map(async (a, idx) => {
             // Look up district and category from workOffice -> Office -> District
@@ -280,6 +282,7 @@ export class EmployeeService {
             const buildSegment = async (segStart: string, segEnd?: string) => {
                 let years = 0, months = 0, days = 0;
                 let totalNumDays = 0;
+                let beforeBreak: boolean | undefined = undefined;
                 if (segStart && segEnd && this.isValidBSDate(segStart) && this.isValidBSDate(segEnd)) {
                     try {
                         const diff = await diffNepaliYMDWithTotalDays(segStart, segEnd);
@@ -287,6 +290,13 @@ export class EmployeeService {
                         months = diff.months;
                         days = diff.days;
                         totalNumDays = diff.totalNumDays;
+                        if (breakADMain) {
+                            const segEndNd = this.parseBSDate(segEnd);
+                            if (segEndNd) {
+                                const segEndAD = segEndNd.getDateObject();
+                                beforeBreak = segEndAD.getTime() <= breakADMain.getTime();
+                            }
+                        }
                     } catch { }
                 }
                 return {
@@ -299,6 +309,7 @@ export class EmployeeService {
                     months,
                     days,
                     totalNumDays,
+                    beforeBreak,
                 } as any;
             };
 

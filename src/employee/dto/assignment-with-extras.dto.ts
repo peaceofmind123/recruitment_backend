@@ -73,6 +73,12 @@ export class AssignmentWithExtrasDto {
 
     @ApiProperty({ description: 'Days between startDateBS and endDateBS', required: false })
     days?: number;
+
+    @ApiProperty({ description: 'Total days between startDateBS and endDateBS', required: false })
+    totalNumDays?: number;
+
+    @ApiProperty({ description: 'True if the segment is at/before break date; false if after', required: false })
+    beforeBreak?: boolean;
 }
 
 

@@ -252,6 +252,7 @@ export class EmployeeService {
         const todayBS = await formatBS(new Date());
         const normalizedTodayEnd = todayBS ? todayBS.replace(/-/g, '/') : undefined;
         const breakDateBS = '2079/03/31';
+        const nextBreakDateBS = '2079/03/32';
 
         const expanded = await Promise.all(assignments.map(async (a, idx) => {
             // Look up district and category from workOffice -> Office -> District
@@ -313,11 +314,11 @@ export class EmployeeService {
                         const endAD = endNd.getDateObject();
                         const breakAD = breakNd.getDateObject();
 
-                        if (startAD.getTime() <= breakAD.getTime() && breakAD.getTime() <= endAD.getTime()) {
-                            // First segment: start -> break
+                        if (startAD.getTime() <= breakAD.getTime() && breakAD.getTime() < endAD.getTime()) {
+                            // First segment: start -> break (inclusive)
                             segments.push(await buildSegment(startBS, breakDateBS));
-                            // Second segment: break -> end
-                            segments.push(await buildSegment(breakDateBS, effectiveEndDateBS));
+                            // Second segment: day after break -> end
+                            segments.push(await buildSegment(nextBreakDateBS, effectiveEndDateBS));
                             return segments;
                         }
                     } catch { /* fall through to unsplit */ }

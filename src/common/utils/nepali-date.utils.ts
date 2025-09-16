@@ -30,6 +30,32 @@ export async function diffNepaliYMD(from: Date | string, to: Date | string = new
     };
 }
 
+/**
+ * Compute years, months, days and total number of days between two BS dates.
+ * Normalizes BS strings with '/' or '-' and uses nepali-date-library's diff.
+ */
+export async function diffNepaliYMDWithTotalDays(from: Date | string, to: Date | string): Promise<NepaliDiff & { totalNumDays: number; }> {
+    const lib: any = await (eval('import("nepali-date-library")'));
+    const NepaliDate = lib.NepaliDate || (lib.default && lib.default.NepaliDate);
+
+    const normalize = (s: Date | string) => typeof s === 'string' ? s.replace(/\//g, '-') : s;
+
+    const startInput = normalize(from);
+    const endInput = normalize(to);
+
+    const start = typeof startInput === 'string' ? new NepaliDate(startInput) : new NepaliDate(startInput);
+    const end = typeof endInput === 'string' ? new NepaliDate(endInput) : new NepaliDate(endInput);
+
+    const totalMonths = end.diff(start, 'month');
+    const totalDays = end.diff(start, 'day');
+
+    const years = Math.floor(totalMonths / 12);
+    const months = totalMonths - years * 12;
+    const days = totalDays - years * 365 - months * 30;
+
+    return { years, months, days, totalNumDays: totalDays };
+}
+
 export async function formatBS(input: Date | string): Promise<string> {
     const lib: any = await (eval('import("nepali-date-library")'));
     const NepaliDate = lib.NepaliDate || (lib.default && lib.default.NepaliDate);

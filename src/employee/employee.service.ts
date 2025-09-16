@@ -18,7 +18,7 @@ import { AssignmentDetail } from './entities/assignment-detail.entity';
 import { EmployeeServiceDetailResponseDto } from './dto/employee-detail-response.dto';
 import { EmployeeBasicDetailsDto } from './dto/employee-basic-details.dto';
 import { EmployeeSeniorityDataDto } from './dto/employee-seniority-data.dto';
-import { diffNepaliYMD, formatBS } from '../common/utils/nepali-date.utils';
+import { diffNepaliYMD, diffNepaliYMDWithTotalDays, formatBS } from '../common/utils/nepali-date.utils';
 const NepaliDate = require('nepali-datetime');
 
 interface ExcelRow {
@@ -278,12 +278,14 @@ export class EmployeeService {
             // Helper to compute Y/M/D and build segment object
             const buildSegment = async (segStart: string, segEnd?: string) => {
                 let years = 0, months = 0, days = 0;
+                let totalNumDays = 0;
                 if (segStart && segEnd && this.isValidBSDate(segStart) && this.isValidBSDate(segEnd)) {
                     try {
-                        const diff = await diffNepaliYMD(segStart, segEnd);
+                        const diff = await diffNepaliYMDWithTotalDays(segStart, segEnd);
                         years = diff.years;
                         months = diff.months;
                         days = diff.days;
+                        totalNumDays = diff.totalNumDays;
                     } catch { }
                 }
                 return {
@@ -295,6 +297,7 @@ export class EmployeeService {
                     years,
                     months,
                     days,
+                    totalNumDays,
                 } as any;
             };
 

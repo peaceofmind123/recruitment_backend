@@ -249,8 +249,11 @@ export class EmployeeService {
 
         const lastIndex = assignments.length - 1;
         const normalizedDefaultEnd = defaultEndDateBS ? defaultEndDateBS.replace(/-/g, '/') : undefined;
+        const todayBS = await formatBS(new Date());
+        const normalizedTodayEnd = todayBS ? todayBS.replace(/-/g, '/') : undefined;
+        const breakDateBS = '2079/03/31';
 
-        const result = await Promise.all(assignments.map(async (a, idx) => {
+        const expanded = await Promise.all(assignments.map(async (a, idx) => {
             // Look up district and category from workOffice -> Office -> District
             let district: string | undefined = undefined;
             let category: string | undefined = undefined;
@@ -263,32 +266,68 @@ export class EmployeeService {
                 }
             }
 
-            // Compute years, months, days between BS dates using utils. Fallbacks to 0.
-            let years = 0, months = 0, days = 0;
-            const effectiveEndDateBS = (!a.endDateBS && idx === lastIndex && normalizedDefaultEnd && this.isValidBSDate(normalizedDefaultEnd))
-                ? normalizedDefaultEnd
-                : a.endDateBS;
+            // Determine effective end date for calculations
+            const effectiveEndDateBS = (!a.endDateBS && idx === lastIndex)
+                ? (normalizedDefaultEnd && this.isValidBSDate(normalizedDefaultEnd) ? normalizedDefaultEnd : normalizedTodayEnd)
+                : (a.endDateBS ? a.endDateBS.replace(/-/g, '/') : undefined);
 
-            if (a.startDateBS && effectiveEndDateBS && this.isValidBSDate(a.startDateBS) && this.isValidBSDate(effectiveEndDateBS)) {
-                try {
-                    const diff = await diffNepaliYMD(a.startDateBS, effectiveEndDateBS);
-                    years = diff.years;
-                    months = diff.months;
-                    days = diff.days;
-                } catch { }
+            const startBS = a.startDateBS ? a.startDateBS.replace(/-/g, '/') : undefined;
+
+            const segments: any[] = [];
+
+            // Helper to compute Y/M/D and build segment object
+            const buildSegment = async (segStart: string, segEnd?: string) => {
+                let years = 0, months = 0, days = 0;
+                if (segStart && segEnd && this.isValidBSDate(segStart) && this.isValidBSDate(segEnd)) {
+                    try {
+                        const diff = await diffNepaliYMD(segStart, segEnd);
+                        years = diff.years;
+                        months = diff.months;
+                        days = diff.days;
+                    } catch { }
+                }
+                return {
+                    ...a,
+                    startDateBS: segStart,
+                    endDateBS: segEnd,
+                    district,
+                    category,
+                    years,
+                    months,
+                    days,
+                } as any;
+            };
+
+            // If valid dates and break date falls between start and end (inclusive), split into two segments
+            if (startBS && effectiveEndDateBS && this.isValidBSDate(startBS) && this.isValidBSDate(effectiveEndDateBS) && this.isValidBSDate(breakDateBS)) {
+                const startNd = this.parseBSDate(startBS);
+                const endNd = this.parseBSDate(effectiveEndDateBS);
+                const breakNd = this.parseBSDate(breakDateBS);
+
+                if (startNd && endNd && breakNd) {
+                    try {
+                        const startAD = startNd.getDateObject();
+                        const endAD = endNd.getDateObject();
+                        const breakAD = breakNd.getDateObject();
+
+                        if (startAD.getTime() <= breakAD.getTime() && breakAD.getTime() <= endAD.getTime()) {
+                            // First segment: start -> break
+                            segments.push(await buildSegment(startBS, breakDateBS));
+                            // Second segment: break -> end
+                            segments.push(await buildSegment(breakDateBS, effectiveEndDateBS));
+                            return segments;
+                        }
+                    } catch { /* fall through to unsplit */ }
+                }
             }
 
-            return {
-                ...a,
-                district,
-                category,
-                years,
-                months,
-                days,
-            } as any;
+            // No split; single segment as-is
+            segments.push(await buildSegment(startBS || a.startDateBS, effectiveEndDateBS));
+            return segments;
         }));
 
-        return result;
+        // Flatten segments
+        return expanded.flat();
     }
 
     private parseExcelDate(dateStr: string): string {

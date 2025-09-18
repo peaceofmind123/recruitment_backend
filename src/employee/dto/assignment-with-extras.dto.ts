@@ -55,9 +55,6 @@ export class AssignmentWithExtrasDto {
     @ApiProperty({ required: false })
     numDaysNew?: number;
 
-    @ApiProperty({ required: false })
-    totalNumDays?: number;
-
     // Additional fields requested
     @ApiProperty({ description: 'Associated district for the assignment', required: false })
     district?: string;

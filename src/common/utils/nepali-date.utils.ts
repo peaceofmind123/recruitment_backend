@@ -22,13 +22,7 @@ export async function diffNepaliYMD(from: Date | string, to: Date | string = new
     let months = end.getMonth() - start.getMonth();
     let days = end.getDate() - start.getDate();
 
-    if (years < 0) { // negative year means invalid inputs
-        return {
-            years: 0,
-            months: 0,
-            days: 0
-        }
-    }
+
     if (days < 0) {
         months--;
         days += prevMonthDays;
@@ -37,7 +31,13 @@ export async function diffNepaliYMD(from: Date | string, to: Date | string = new
         years--;
         months += 12;
     }
-
+    if (years < 0) { // negative year means invalid inputs
+        return {
+            years: 0,
+            months: 0,
+            days: 0
+        }
+    }
     return {
         years,
         months,

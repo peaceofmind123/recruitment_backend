@@ -76,6 +76,9 @@ export class AssignmentWithExtrasDto {
 
     @ApiProperty({ description: 'True if the segment is at/before break date; false if after', required: false })
     beforeBreak?: boolean;
+
+    @ApiProperty({ description: 'Cumulative present days for consecutive same-category segments', required: false })
+    presentDays?: number;
 }
 
 

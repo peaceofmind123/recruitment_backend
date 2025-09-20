@@ -342,7 +342,23 @@ export class EmployeeService {
         }));
 
         // Flatten segments
-        return expanded.flat();
+        const flattened = expanded.flat();
+
+        // Initialize presentDays with totalNumDays for each assignment
+        for (const seg of flattened) {
+            seg.presentDays = seg.totalNumDays || 0;
+        }
+
+        // Accumulate presentDays for consecutive same-category segments
+        for (let i = 0; i < flattened.length - 1; i++) {
+            const currentAssignment = flattened[i];
+            const subsequentAssignment = flattened[i + 1];
+            if (currentAssignment && subsequentAssignment && currentAssignment.category === subsequentAssignment.category) {
+                subsequentAssignment.presentDays = (subsequentAssignment.presentDays || 0) + (currentAssignment.presentDays || 0);
+            }
+        }
+
+        return flattened;
     }
 
     private parseExcelDate(dateStr: string): string {

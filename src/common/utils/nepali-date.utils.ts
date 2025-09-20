@@ -16,12 +16,27 @@ export async function diffNepaliYMD(from: Date | string, to: Date | string = new
     const start = typeof from === 'string' ? new NepaliDate(from) : new NepaliDate(from);
     const end = typeof to === 'string' ? new NepaliDate(to) : new NepaliDate(to);
 
-    const totalMonths = end.diff(start, 'month');
-    const totalDays = end.diff(start, 'day');
+    const prevMonthDays = new NepaliDate(end.getYear(), end.getMonth(), 1).addDays(-1).getDate();
 
-    const years = Math.floor(totalMonths / 12);
-    const months = totalMonths - years * 12;
-    const days = totalDays - years * 365 - months * 30;
+    let years = end.getYear() - start.getYear();
+    let months = end.getMonth() - start.getMonth();
+    let days = end.getDate() - start.getDate();
+
+    if (years < 0) { // negative year means invalid inputs
+        return {
+            years: 0,
+            months: 0,
+            days: 0
+        }
+    }
+    if (days < 0) {
+        months--;
+        days += prevMonthDays;
+    }
+    if (months < 0) {
+        years--;
+        months += 12;
+    }
 
     return {
         years,
@@ -46,14 +61,10 @@ export async function diffNepaliYMDWithTotalDays(from: Date | string, to: Date |
     const start = typeof startInput === 'string' ? new NepaliDate(startInput) : new NepaliDate(startInput);
     const end = typeof endInput === 'string' ? new NepaliDate(endInput) : new NepaliDate(endInput);
 
-    const totalMonths = end.diff(start, 'month');
-    const totalDays = end.diff(start, 'day');
+    const ymd = await diffNepaliYMD(startInput, endInput);
+    const totalNumDays = end.diff(start, 'day');
 
-    const years = Math.floor(totalMonths / 12);
-    const months = totalMonths - years * 12;
-    const days = totalDays - years * 365 - months * 30;
-
-    return { years, months, days, totalNumDays: totalDays };
+    return { ...ymd, totalNumDays };
 }
 
 export async function formatBS(input: Date | string): Promise<string> {

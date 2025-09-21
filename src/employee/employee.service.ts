@@ -251,8 +251,8 @@ export class EmployeeService {
         const normalizedDefaultEnd = defaultEndDateBS ? defaultEndDateBS.replace(/-/g, '/') : undefined;
         const todayBS = await formatBS(new Date());
         const normalizedTodayEnd = todayBS ? todayBS.replace(/-/g, '/') : undefined;
-        const breakDateBS = '2079/03/31';
-        const nextBreakDateBS = '2079/03/32';
+        const breakDateBS = '2079/03/32';
+        const nextBreakDateBS = '2079/04/01';
         const breakNdMain = this.parseBSDate(breakDateBS);
         const breakADMain = breakNdMain ? breakNdMain.getDateObject() : null;
 
@@ -383,7 +383,7 @@ export class EmployeeService {
 
     /**
      * Parse BS date string to NepaliDate object
-     * Expected format: "2079/03/31" or "2079-03/31"
+     * Expected format: "2079/03/32" or "2079-03/31"
      */
     private parseBSDate(bsDateStr: string): any | null {
         if (!bsDateStr) return null;
@@ -475,7 +475,7 @@ export class EmployeeService {
     }
 
     /**
-     * Calculate marks for old system (before 2079/03/31)
+     * Calculate marks for old system (before 2079/03/32)
      */
     private async marksAccOld(numDays: number, presentDays: number, workOffice: string, gender: 'male' | 'female' | null = null, previousWorkOffice?: string): Promise<number> {
         if (presentDays < 90) {
@@ -488,7 +488,7 @@ export class EmployeeService {
     }
 
     /**
-     * Calculate marks for new system (after 2079/03/31)
+     * Calculate marks for new system (after 2079/03/32)
      */
     private async marksAccNew(numDays: number, presentDays: number, workOffice: string, gender: 'male' | 'female' | null = null): Promise<number> {
         if (presentDays < 233) {
@@ -530,11 +530,11 @@ export class EmployeeService {
         // Calculate total number of days
         const totalNumDays = this.calculateDaysBetweenBSDates(assignment.startDateBS, assignment.endDateBS);
 
-        // Calculate days in old system (before 2079/03/31)
+        // Calculate days in old system (before 2079/03/32)
         let numDaysOld = 0;
         let numDaysNew = 0;
 
-        const cutoffDate = '2079/03/31';
+        const cutoffDate = '2079/03/32';
         const startDate = this.parseBSDate(assignment.startDateBS);
         const endDate = this.parseBSDate(assignment.endDateBS);
         const cutoffDateBS = this.parseBSDate(cutoffDate);

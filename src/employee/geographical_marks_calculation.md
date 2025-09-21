@@ -18,11 +18,11 @@ Algorithm:
 For each employee (identified by `employeeId`),
     For each assignment row, count:
         (i). the number of days between `startDateBS` and `endDateBS` --> `totalNumDays`.
-        (ii). the number of days between `startDateBS` and `2079/03/31`--> `numDaysOld`.
-        (iii). the number of days between `2079/03/31` and `endDateBS` --> `numDaysNew`.
-    If `startDateBS` is earlier than 2079/03/31 and endDateBS is later than 2079/03/31, the calculation for the row should be as follows:
+        (ii). the number of days between `startDateBS` and `2079/03/32`--> `numDaysOld`.
+        (iii). the number of days between `2079/03/32` and `endDateBS` --> `numDaysNew`.
+    If `startDateBS` is earlier than 2079/03/32 and endDateBS is later than 2079/03/32, the calculation for the row should be as follows:
     For the row, `totalMarks = marksAccNew(numDaysNew) + marksAccOld(numDaysOld)`
-    If, on the other hand, `startDateBS` is later than 2079/03/31 or if `endDateBS` is earlier than 2079/03/31, the calculation should be as follows:
+    If, on the other hand, `startDateBS` is later than 2079/03/32 or if `endDateBS` is earlier than 2079/03/32, the calculation should be as follows:
         `totalMarks = marksAccNew(totalNumDays)`
     
 For now, we don't have the getGeographicalMarks() function, just return 1 for now.

@@ -116,7 +116,7 @@ describe('EmployeeService', () => {
 
     describe('parseBSDate', () => {
         it('should parse valid BS date', () => {
-            const result = service['parseBSDate']('2079/03/31');
+            const result = service['parseBSDate']('2079/03/32');
             expect(result).toBeTruthy();
         });
         it('should return null for invalid', () => {
@@ -126,7 +126,7 @@ describe('EmployeeService', () => {
 
     describe('isValidBSDate', () => {
         it('should validate correct BS date', () => {
-            expect(service['isValidBSDate']('2079/03/31')).toBe(true);
+            expect(service['isValidBSDate']('2079/03/32')).toBe(true);
         });
         it('should invalidate incorrect BS date', () => {
             expect(service['isValidBSDate']('invalid')).toBe(false);
@@ -135,8 +135,8 @@ describe('EmployeeService', () => {
 
     describe('formatBSDate', () => {
         it('should format NepaliDate', () => {
-            const nepaliDate = { format: jest.fn().mockReturnValue('2079-03-31') };
-            expect(service['formatBSDate'](nepaliDate)).toBe('2079-03-31');
+            const nepaliDate = { format: jest.fn().mockReturnValue('2079-03-32') };
+            expect(service['formatBSDate'](nepaliDate)).toBe('2079-03-32');
         });
         it('should handle error', () => {
             const nepaliDate = { format: jest.fn().mockImplementation(() => { throw new Error(); }) };
@@ -147,7 +147,7 @@ describe('EmployeeService', () => {
     describe('calculateDaysBetweenBSDates', () => {
         it('should calculate days between two valid BS dates', () => {
             service['parseBSDate'] = jest.fn().mockReturnValue({ getDateObject: () => new Date(2022, 2, 31) });
-            expect(service['calculateDaysBetweenBSDates']('2079/03/30', '2079/03/31')).toBe(0);
+            expect(service['calculateDaysBetweenBSDates']('2079/03/30', '2079/03/32')).toBe(0);
         });
         it('should return 0 for invalid dates', () => {
             service['parseBSDate'] = jest.fn().mockReturnValue(null);
@@ -227,7 +227,7 @@ describe('EmployeeService', () => {
                 .mockImplementation((dateStr) => {
                     if (dateStr === '2078/01/01') return startDate;
                     if (dateStr === '2080/01/01') return endDate;
-                    if (dateStr === '2079/03/31') return cutoffDate;
+                    if (dateStr === '2079/03/32') return cutoffDate;
                     return null;
                 });
 

@@ -49,6 +49,9 @@ export class AssignmentWithExtrasDto {
     @ApiProperty({ required: false })
     totalGeographicalMarks?: number;
 
+    @ApiProperty({ description: 'Marks computed per assignment segment per marks-calculation.md', required: false })
+    totalMarks?: number;
+
     @ApiProperty({ required: false })
     numDaysOld?: number;
 

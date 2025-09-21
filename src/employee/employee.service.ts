@@ -247,6 +247,10 @@ export class EmployeeService {
     async getEmployeeAssignmentsWithExtras(employeeId: number, startLevel?: number, endLevel?: number, defaultEndDateBS?: string) {
         const assignments = await this.getEmployeeAssignments(employeeId, startLevel, endLevel);
 
+        // Fetch employee to derive gender for marks calculation
+        const employee = await this.getEmployeeById(employeeId);
+        const employeeGender: 'male' | 'female' | null = employee?.sex === Sex.M ? 'male' : (employee?.sex === Sex.F ? 'female' : null);
+
         const lastIndex = assignments.length - 1;
         const normalizedDefaultEnd = defaultEndDateBS ? defaultEndDateBS.replace(/-/g, '/') : undefined;
         const todayBS = await formatBS(new Date());
@@ -356,6 +360,68 @@ export class EmployeeService {
             if (currentAssignment && subsequentAssignment && currentAssignment.category === subsequentAssignment.category) {
                 subsequentAssignment.presentDays = (subsequentAssignment.presentDays || 0) + (currentAssignment.presentDays || 0);
             }
+        }
+
+        // Compute totalMarks for each segment based on marks-calculation.md
+        for (let i = 0; i < flattened.length; i++) {
+            const seg = flattened[i] as any;
+
+            // Default guards
+            const years = typeof seg.years === 'number' ? seg.years : 0;
+            const months = typeof seg.months === 'number' ? seg.months : 0;
+            const days = typeof seg.days === 'number' ? seg.days : 0;
+            const presentDays: number = typeof seg.presentDays === 'number' ? seg.presentDays : 0;
+
+            let marksYear = 0; // default fallback
+
+            if (seg.beforeBreak) {
+                // Old system
+                let effectiveCategory = seg.category as string | undefined;
+                if (presentDays < 90) {
+                    const prevSeg = i > 0 ? flattened[i - 1] as any : undefined;
+                    if (!prevSeg) {
+                        marksYear = 0; // TODO: handle new appointment
+                        continue;
+                    }
+                    effectiveCategory = prevSeg.category;
+                }
+
+                if (effectiveCategory) {
+                    // If gender is not known, assign 0 and continue without fallback
+                    if (!employeeGender) {
+                        marksYear = 0;
+                        continue;
+                    }
+                    const cm = await this.categoryMarksRepository.findOne({ where: { category: effectiveCategory, type: 'old', gender: employeeGender } });
+                    marksYear = (cm && typeof cm.marks === 'number') ? cm.marks : 0;
+                } else {
+                    marksYear = 0;
+                }
+            } else {
+                // New system
+                if (presentDays < 233) {
+                    marksYear = 1.75;
+                } else {
+                    const effectiveCategory = seg.category as string | undefined;
+                    if (effectiveCategory) {
+                        const cm = await this.categoryMarksRepository.findOne({ where: { category: effectiveCategory, type: 'new' } });
+                        marksYear = (cm && typeof cm.marks === 'number') ? cm.marks : 0;
+                    } else {
+                        marksYear = 0;
+                    }
+                }
+            }
+
+            const marksMonth = marksYear / 12;
+            const marksDay = marksYear / 365;
+
+            const yearMarks = years * marksYear;
+            const monthMarks = months * marksMonth;
+            const daysMarks = days * marksDay;
+            seg.yearMarks = yearMarks;
+            seg.monthMarks = monthMarks;
+            seg.daysMarks = daysMarks;
+            seg.totalMarks = yearMarks + monthMarks + daysMarks;
         }
 
         return flattened;

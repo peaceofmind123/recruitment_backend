@@ -9,6 +9,7 @@ import { EmployeeBasicDetailsDto } from './dto/employee-basic-details.dto';
 import { EmployeeSeniorityDataDto } from './dto/employee-seniority-data.dto';
 import { AssignmentDetail } from './entities/assignment-detail.entity';
 import { AssignmentWithExtrasDto } from './dto/assignment-with-extras.dto';
+import { EmployeeCompleteDetailsDto } from './dto/employee-complete-details.dto';
 
 @ApiTags('Employee')
 @Controller('employee')
@@ -192,5 +193,55 @@ export class EmployeeController {
         const start = startLevel !== undefined ? parseInt(startLevel, 10) : undefined;
         const end = endLevel !== undefined ? parseInt(endLevel, 10) : undefined;
         return this.employeeService.getEmployeeAssignmentsWithExtras(id, isNaN(start as any) ? undefined : start, isNaN(end as any) ? undefined : end, defaultEndDateBS);
+    }
+
+    @Get('complete-details')
+    @ApiOperation({ summary: 'Aggregate details, seniority, and assignments for an employee' })
+    @ApiQuery({ name: 'employeeId', type: Number, required: true })
+    @ApiQuery({ name: 'startLevel', type: Number, required: false })
+    @ApiQuery({ name: 'endLevel', type: Number, required: false })
+    @ApiQuery({ name: 'defaultEndDateBS', type: String, required: false })
+    @ApiQuery({ name: 'endDateBS', type: String, required: false, description: 'Optional BS end date for seniority (YYYY-MM-DD or YYYY/MM/DD)' })
+    @ApiResponse({ status: 200, type: EmployeeCompleteDetailsDto })
+    async getEmployeeCompleteDetails(
+        @Query('employeeId') employeeId: string,
+        @Query('startLevel') startLevel?: string,
+        @Query('endLevel') endLevel?: string,
+        @Query('defaultEndDateBS') defaultEndDateBS?: string,
+        @Query('endDateBS') endDateBS?: string,
+    ): Promise<EmployeeCompleteDetailsDto> {
+        const id = parseInt(employeeId, 10);
+        if (isNaN(id)) {
+            throw new NotFoundException('Invalid employeeId');
+        }
+        const startParsed = startLevel !== undefined ? parseInt(startLevel, 10) : undefined;
+        const endParsed = endLevel !== undefined ? parseInt(endLevel, 10) : undefined;
+
+        // Fetch details first to derive default start level if missing
+        const details = await this.employeeService.getEmployeeBasicDetails(id);
+        if (!details) {
+            throw new NotFoundException('Employee not found');
+        }
+
+        const effectiveStart = (startParsed !== undefined && !isNaN(startParsed as any)) ? startParsed : (details.level ?? undefined);
+        const effectiveEnd = (endParsed !== undefined && !isNaN(endParsed as any)) ? endParsed : undefined;
+
+        // Use provided endDateBS as defaultEndDateBS for assignments
+        const defaultEndForAssignments = endDateBS;
+
+        const [seniority, assignments] = await Promise.all([
+            this.employeeService.getEmployeeSeniorityData(id, endDateBS),
+            this.employeeService.getEmployeeAssignmentsWithExtras(id, effectiveStart, effectiveEnd, defaultEndForAssignments)
+        ]);
+
+        if (!seniority) {
+            throw new NotFoundException('Employee not found or missing seniority date');
+        }
+
+        return {
+            details,
+            seniority,
+            assignments: assignments as any
+        };
     }
 } 

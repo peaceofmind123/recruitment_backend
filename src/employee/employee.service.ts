@@ -1185,8 +1185,10 @@ export class EmployeeService {
         }
 
         const { years, months, days } = await diffNepaliYMD(startBS, endBS ?? new Date());
+        const effectiveReturnEndBS = endBS ? endBS.replace(/\//g, '-') : await formatBS(new Date());
         return {
             seniorityDateBS: startBS,
+            endDateBS: effectiveReturnEndBS,
             years,
             months,
             days

@@ -4,6 +4,9 @@ export class EmployeeSeniorityDataDto {
     @ApiProperty({ description: 'Seniority date in BS (YYYY-MM-DD)' })
     seniorityDateBS: string;
 
+    @ApiProperty({ description: 'Provided end date in BS used for calculation (YYYY-MM-DD)', required: false })
+    endDateBS?: string;
+
     @ApiProperty({ description: 'Years elapsed from seniorityDateBS to today' })
     years: number;
 

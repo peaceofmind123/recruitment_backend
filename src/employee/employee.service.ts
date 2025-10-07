@@ -380,20 +380,20 @@ export class EmployeeService {
                 if (presentDays < 90) {
                     const prevSeg = i > 0 ? flattened[i - 1] as any : undefined;
                     if (!prevSeg) {
-                        marksYear = 0; // TODO: handle new appointment
-                        continue;
+                        marksYear = 0; // new appointment: no previous category
+                    } else {
+                        effectiveCategory = prevSeg.category;
                     }
-                    effectiveCategory = prevSeg.category;
                 }
 
                 if (effectiveCategory) {
-                    // If gender is not known, assign 0 and continue without fallback
+                    // If gender is not known, assign 0 without fallback
                     if (!employeeGender) {
                         marksYear = 0;
-                        continue;
+                    } else {
+                        const cm = await this.categoryMarksRepository.findOne({ where: { category: effectiveCategory, type: 'old', gender: employeeGender } });
+                        marksYear = (cm && typeof cm.marks === 'number') ? cm.marks : 0;
                     }
-                    const cm = await this.categoryMarksRepository.findOne({ where: { category: effectiveCategory, type: 'old', gender: employeeGender } });
-                    marksYear = (cm && typeof cm.marks === 'number') ? cm.marks : 0;
                 } else {
                     marksYear = 0;
                 }
@@ -421,6 +421,7 @@ export class EmployeeService {
             seg.yearMarks = yearMarks;
             seg.monthMarks = monthMarks;
             seg.daysMarks = daysMarks;
+            seg.marksYear = marksYear;
             seg.totalMarks = yearMarks + monthMarks + daysMarks;
         }
 

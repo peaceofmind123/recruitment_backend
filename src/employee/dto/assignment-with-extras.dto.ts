@@ -52,6 +52,9 @@ export class AssignmentWithExtrasDto {
     @ApiProperty({ description: 'Marks computed per assignment segment per marks-calculation.md', required: false })
     totalMarks?: number;
 
+    @ApiProperty({ description: 'Per-year marks used for this segment', required: false })
+    marksYear?: number;
+
     @ApiProperty({ required: false })
     numDaysOld?: number;
 

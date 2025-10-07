@@ -135,13 +135,14 @@ export class EmployeeController {
     @Get('seniority-data')
     @ApiOperation({ summary: 'Get seniority data in BS (years, months, days since seniority date)' })
     @ApiQuery({ name: 'employeeId', type: Number, required: true })
+    @ApiQuery({ name: 'endDateBS', type: String, required: false, description: 'Optional BS end date (YYYY-MM-DD or YYYY/MM/DD). Must be on/after seniorityDateBS.' })
     @ApiResponse({ status: 200, type: EmployeeSeniorityDataDto })
-    async getEmployeeSeniorityData(@Query('employeeId') employeeId: string): Promise<EmployeeSeniorityDataDto> {
+    async getEmployeeSeniorityData(@Query('employeeId') employeeId: string, @Query('endDateBS') endDateBS?: string): Promise<EmployeeSeniorityDataDto> {
         const id = parseInt(employeeId, 10);
         if (isNaN(id)) {
             throw new NotFoundException('Invalid employeeId');
         }
-        const data = await this.employeeService.getEmployeeSeniorityData(id);
+        const data = await this.employeeService.getEmployeeSeniorityData(id, endDateBS);
         if (!data) {
             throw new NotFoundException('Employee not found or missing seniority date');
         }

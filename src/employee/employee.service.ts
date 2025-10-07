@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Employee, Sex } from './entities/employee.entity';
@@ -1156,13 +1156,37 @@ export class EmployeeService {
         };
     }
 
-    async getEmployeeSeniorityData(employeeId: number): Promise<EmployeeSeniorityDataDto | null> {
+    async getEmployeeSeniorityData(employeeId: number, endDateBS?: string): Promise<EmployeeSeniorityDataDto | null> {
         const employee = await this.employeeRepository.findOne({ where: { employeeId } });
         if (!employee || !employee.seniorityDate) return null;
 
-        const { years, months, days } = await diffNepaliYMD(new Date(employee.seniorityDate));
+        // Compute in BS; normalize input
+        const startBS = await formatBS(new Date(employee.seniorityDate));
+
+        let endBS: string | undefined;
+        if (endDateBS && endDateBS.trim()) {
+            // Validate BS format using existing helpers
+            const normalized = endDateBS.replace(/-/g, '/');
+            if (!this.isValidBSDate(normalized)) {
+                throw new BadRequestException('Invalid endDateBS');
+            }
+            // Ensure end >= start
+            const startNd = this.parseBSDate(startBS.replace(/-/g, '/'));
+            const endNd = this.parseBSDate(normalized);
+            if (!startNd || !endNd) {
+                throw new BadRequestException('Invalid BS date inputs');
+            }
+            const startAD = startNd.getDateObject();
+            const endAD = endNd.getDateObject();
+            if (endAD.getTime() < startAD.getTime()) {
+                throw new BadRequestException('endDateBS must be on or after seniorityDateBS');
+            }
+            endBS = normalized;
+        }
+
+        const { years, months, days } = await diffNepaliYMD(startBS, endBS ?? new Date());
         return {
-            seniorityDateBS: await formatBS(new Date(employee.seniorityDate)),
+            seniorityDateBS: startBS,
             years,
             months,
             days

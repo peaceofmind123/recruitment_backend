@@ -239,8 +239,21 @@ export class EmployeeController {
         }
 
         return {
-            details,
-            seniority,
+            // Flatten details
+            employeeId: details.employeeId,
+            name: details.name,
+            level: details.level,
+            workingOffice: details.workingOffice,
+            position: details.position,
+            dob: details.dob,
+            group: details.group,
+            // Flatten seniority
+            seniorityDateBS: seniority.seniorityDateBS,
+            endDateBS: seniority.endDateBS,
+            years: seniority.years,
+            months: seniority.months,
+            days: seniority.days,
+            // Keep assignments array
             assignments: assignments as any
         };
     }

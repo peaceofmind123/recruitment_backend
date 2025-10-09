@@ -1,5 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { AssignmentDetailDto } from './assignment-detail.dto';
+import { AbsentDetailDto } from './absent-detail.dto';
+import { LeaveDetailDto } from './leave-detail.dto';
+import { RewardPunishmentDetailDto } from './reward-punishment-detail.dto';
 
 export class EmployeeDetailDto {
     @ApiProperty({ description: 'Employee ID' })
@@ -26,6 +29,15 @@ export class EmployeeDetailDto {
         required: false
     })
     assignments?: AssignmentDetailDto[];
+
+    @ApiProperty({ description: 'Absent details', type: [AbsentDetailDto], required: false })
+    absents?: AbsentDetailDto[];
+
+    @ApiProperty({ description: 'Leave details', type: [LeaveDetailDto], required: false })
+    leaves?: LeaveDetailDto[];
+
+    @ApiProperty({ description: 'Reward/Punishment details', type: [RewardPunishmentDetailDto], required: false })
+    rewardsPunishments?: RewardPunishmentDetailDto[];
 
     @ApiProperty({
         description: 'Sum of totalGeographicalMarks across all assignments for this employee',

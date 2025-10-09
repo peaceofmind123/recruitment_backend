@@ -15,6 +15,9 @@ import { Office } from '../common/entities/office.entity';
 import { District } from '../common/entities/district.entity';
 import { CategoryMarks } from '../common/entities/category-marks.entity';
 import { AssignmentDetail } from './entities/assignment-detail.entity';
+import { AbsentDetailEntity } from './entities/absent-detail.entity';
+import { LeaveDetailEntity } from './entities/leave-detail.entity';
+import { RewardPunishmentDetailEntity } from './entities/reward-punishment-detail.entity';
 import { EmployeeServiceDetailResponseDto } from './dto/employee-detail-response.dto';
 import { EmployeeBasicDetailsDto } from './dto/employee-basic-details.dto';
 import { EmployeeSeniorityDataDto } from './dto/employee-seniority-data.dto';
@@ -55,6 +58,12 @@ export class EmployeeService {
         private categoryMarksRepository: Repository<CategoryMarks>,
         @InjectRepository(AssignmentDetail)
         private assignmentDetailRepository: Repository<AssignmentDetail>,
+        @InjectRepository(AbsentDetailEntity)
+        private absentDetailRepository: Repository<AbsentDetailEntity>,
+        @InjectRepository(LeaveDetailEntity)
+        private leaveDetailRepository: Repository<LeaveDetailEntity>,
+        @InjectRepository(RewardPunishmentDetailEntity)
+        private rewardPunishmentDetailRepository: Repository<RewardPunishmentDetailEntity>,
     ) {
         // Removed log file setup
     }
@@ -700,6 +709,16 @@ export class EmployeeService {
         let isProcessingAssignments = false;
         let assignmentHeaders: string[] = [];
         let currentAssignments: AssignmentDetailDto[] = [];
+        // New sections state
+        let isProcessingAbsents = false;
+        let isProcessingLeaves = false;
+        let isProcessingRewards = false;
+        let absentHeaders: string[] = [];
+        let leaveHeaders: string[] = [];
+        let rewardHeaders: string[] = [];
+        let currentAbsents: any[] = [];
+        let currentLeaves: any[] = [];
+        let currentRewards: any[] = [];
         let currentEmployeeGender: 'male' | 'female' | null = null;
 
         for (let i = 0; i < data.length; i++) {
@@ -714,6 +733,9 @@ export class EmployeeService {
                 if (Object.keys(currentEmployee).length > 0 && currentEmployee.employeeId) {
                     // Save assignments to database for previous employee
                     await this.saveAssignmentsToDatabase(currentEmployee.employeeId, currentAssignments, currentEmployeeGender);
+                    await this.saveAbsentsToDatabase(currentEmployee.employeeId, currentAbsents);
+                    await this.saveLeavesToDatabase(currentEmployee.employeeId, currentLeaves);
+                    await this.saveRewardsToDatabase(currentEmployee.employeeId, currentRewards);
 
                     // Create a new object to ensure all properties are included
                     const employeeDetail: EmployeeDetailDto = {
@@ -723,22 +745,37 @@ export class EmployeeService {
                         dor: currentEmployee.dor,
                         joinDate: currentEmployee.joinDate,
                         permDate: currentEmployee.permDate,
-                        assignments: [...currentAssignments] // Create a new array with all assignments
+                        assignments: [...currentAssignments], // Create a new array with all assignments
+                        absents: [...currentAbsents],
+                        leaves: [...currentLeaves],
+                        rewardsPunishments: [...currentRewards]
                     };
                     employeeDetails.push(employeeDetail);
                 }
                 currentEmployee = {
                     employeeId: employeeIdMatch[1],
-                    assignments: []
+                    assignments: [],
+                    absents: [],
+                    leaves: [],
+                    rewardsPunishments: []
                 };
                 currentAssignments = [];
+                currentAbsents = [];
+                currentLeaves = [];
+                currentRewards = [];
                 isProcessingAssignments = false;
+                isProcessingAbsents = false;
+                isProcessingLeaves = false;
+                isProcessingRewards = false;
                 continue;
             }
 
             // Check for Assignment Details section
-            if (firstCell === 'Assignment Details:') {
+            if (/^assignment details:?$/i.test(firstCell)) {
                 isProcessingAssignments = true;
+                isProcessingAbsents = false;
+                isProcessingLeaves = false;
+                isProcessingRewards = false;
                 // Get headers from next row
                 if (i + 1 < data.length) {
                     const headerRow = data[i + 1];
@@ -746,16 +783,70 @@ export class EmployeeService {
                         assignmentHeaders = headerRow.map(h => h?.toString() || '');
                     }
                 }
-                i += 2; // Skip header row
+                i += 1; // move to header row; next loop will read data starting from i+1
+                continue;
+            }
+
+            // Check for Absent Details section
+            if (/^absent details:?$/i.test(firstCell)) {
+                isProcessingAssignments = false;
+                isProcessingAbsents = true;
+                isProcessingLeaves = false;
+                isProcessingRewards = false;
+                if (i + 1 < data.length) {
+                    const headerRow = data[i + 1];
+                    if (Array.isArray(headerRow)) {
+                        absentHeaders = headerRow.map(h => h?.toString() || '');
+                    }
+                }
+                i += 1;
+                continue;
+            }
+
+            // Check for Leave Details section
+            if (/^leave details:?$/i.test(firstCell)) {
+                isProcessingAssignments = false;
+                isProcessingAbsents = false;
+                isProcessingLeaves = true;
+                isProcessingRewards = false;
+                if (i + 1 < data.length) {
+                    const headerRow = data[i + 1];
+                    if (Array.isArray(headerRow)) {
+                        leaveHeaders = headerRow.map(h => h?.toString() || '');
+                    }
+                }
+                i += 1;
+                continue;
+            }
+
+            // Check for Reward/Punishment Details section
+            if (/^reward\s*\/\s*punishment details:?$/i.test(firstCell)) {
+                isProcessingAssignments = false;
+                isProcessingAbsents = false;
+                isProcessingLeaves = false;
+                isProcessingRewards = true;
+                if (i + 1 < data.length) {
+                    const headerRow = data[i + 1];
+                    if (Array.isArray(headerRow)) {
+                        rewardHeaders = headerRow.map(h => h?.toString() || '');
+                    }
+                }
+                i += 1;
                 continue;
             }
 
             // Check for end of assignments section
             if (firstCell === 'Qualification Details:') {
                 isProcessingAssignments = false;
+                isProcessingAbsents = false;
+                isProcessingLeaves = false;
+                isProcessingRewards = false;
                 if (currentEmployee.employeeId) {
                     // Save assignments to database
                     await this.saveAssignmentsToDatabase(currentEmployee.employeeId, currentAssignments, currentEmployeeGender);
+                    await this.saveAbsentsToDatabase(currentEmployee.employeeId, currentAbsents);
+                    await this.saveLeavesToDatabase(currentEmployee.employeeId, currentLeaves);
+                    await this.saveRewardsToDatabase(currentEmployee.employeeId, currentRewards);
 
                     // Create a new object to ensure all properties are included
                     const employeeDetail: EmployeeDetailDto = {
@@ -765,11 +856,17 @@ export class EmployeeService {
                         dor: currentEmployee.dor,
                         joinDate: currentEmployee.joinDate,
                         permDate: currentEmployee.permDate,
-                        assignments: [...currentAssignments] // Create a new array with all assignments
+                        assignments: [...currentAssignments], // Create a new array with all assignments
+                        absents: [...currentAbsents],
+                        leaves: [...currentLeaves],
+                        rewardsPunishments: [...currentRewards]
                     };
                     employeeDetails.push(employeeDetail);
                 }
                 currentAssignments = [];
+                currentAbsents = [];
+                currentLeaves = [];
+                currentRewards = [];
                 continue;
             }
 
@@ -890,6 +987,117 @@ export class EmployeeService {
                 continue;
             }
 
+            // Process Absent Details rows
+            if (isProcessingAbsents && row.length > 0) {
+                if (row.every(cell => !cell)) {
+                    continue;
+                }
+                const absent: any = {};
+                absentHeaders.forEach((header, index) => {
+                    const rawValue = row[index];
+                    const value = rawValue?.toString().trim() || '';
+                    const h = (header ?? '').toString().trim().toLowerCase();
+                    if ((h === 'from date') && (value || this.isExcelDateNumber(rawValue))) {
+                        absent.fromDateBS = this.isExcelDateNumber(rawValue) ? this.convertExcelDateToBS(rawValue) : value;
+                        return;
+                    }
+                    if ((h === 'to date') && (value || this.isExcelDateNumber(rawValue))) {
+                        absent.toDateBS = this.isExcelDateNumber(rawValue) ? this.convertExcelDateToBS(rawValue) : value;
+                        return;
+                    }
+                    if (h === 'duration') {
+                        absent.duration = value;
+                        return;
+                    }
+                    if (h === 'remarks' || h === 'remark') {
+                        absent.remarks = value;
+                        return;
+                    }
+                });
+                // Add only if not a header echo (e.g., From Date, To Date)
+                const looksLikeHeaderEcho = ['from date', 'to date', 'duration', 'remarks'].every((k, idx) => (row[idx]?.toString().trim().toLowerCase() || '') === k);
+                if (!looksLikeHeaderEcho && (absent.fromDateBS || absent.toDateBS || absent.duration || absent.remarks)) {
+                    currentAbsents.push(absent);
+                }
+                continue;
+            }
+
+            // Process Leave Details rows
+            if (isProcessingLeaves && row.length > 0) {
+                if (row.every(cell => !cell)) {
+                    continue;
+                }
+                const leave: any = {};
+                leaveHeaders.forEach((header, index) => {
+                    const rawValue = row[index];
+                    const value = rawValue?.toString().trim() || '';
+                    const h = (header ?? '').toString().trim().toLowerCase();
+                    if ((h === 'from date') && (value || this.isExcelDateNumber(rawValue))) {
+                        leave.fromDateBS = this.isExcelDateNumber(rawValue) ? this.convertExcelDateToBS(rawValue) : value;
+                        return;
+                    }
+                    if ((h === 'to date') && (value || this.isExcelDateNumber(rawValue))) {
+                        leave.toDateBS = this.isExcelDateNumber(rawValue) ? this.convertExcelDateToBS(rawValue) : value;
+                        return;
+                    }
+                    if (h === 'leave type') {
+                        leave.leaveType = value;
+                        return;
+                    }
+                    if (h === 'duration') {
+                        leave.duration = value;
+                        return;
+                    }
+                    if (h === 'remarks' || h === 'remark') {
+                        leave.remarks = value;
+                        return;
+                    }
+                });
+                const looksLikeHeaderEcho = ['from date', 'to date', 'leave type', 'duration', 'remarks'].every((k, idx) => (row[idx]?.toString().trim().toLowerCase() || '') === k);
+                if (!looksLikeHeaderEcho && (leave.fromDateBS || leave.toDateBS || leave.leaveType || leave.duration || leave.remarks)) {
+                    currentLeaves.push(leave);
+                }
+                continue;
+            }
+
+            // Process Reward/Punishment Details rows
+            if (isProcessingRewards && row.length > 0) {
+                if (row.every(cell => !cell)) {
+                    continue;
+                }
+                const rp: any = {};
+                rewardHeaders.forEach((header, index) => {
+                    const rawValue = row[index];
+                    const value = rawValue?.toString().trim() || '';
+                    const h = (header ?? '').toString().trim().toLowerCase();
+                    if ((h === 'r/p type' || h === 'rp type')) {
+                        rp.rpType = value;
+                        return;
+                    }
+                    if ((h === 'date from') && (value || this.isExcelDateNumber(rawValue))) {
+                        rp.fromDateBS = this.isExcelDateNumber(rawValue) ? this.convertExcelDateToBS(rawValue) : value;
+                        return;
+                    }
+                    if ((h === 'date to') && (value || this.isExcelDateNumber(rawValue))) {
+                        rp.toDateBS = this.isExcelDateNumber(rawValue) ? this.convertExcelDateToBS(rawValue) : value;
+                        return;
+                    }
+                    if (h === 'r/p name' || h === 'rp name') {
+                        rp.rpName = value;
+                        return;
+                    }
+                    if (h === 'reason' || h === 'remarks' || h === 'remark') {
+                        rp.reason = value;
+                        return;
+                    }
+                });
+                const looksLikeHeaderEcho = ['r/p type', 'date from', 'date to', 'r/p name', 'reason'].every((k, idx) => (row[idx]?.toString().trim().toLowerCase() || '') === k);
+                if (!looksLikeHeaderEcho && (rp.rpType || rp.fromDateBS || rp.toDateBS || rp.rpName || rp.reason)) {
+                    currentRewards.push(rp);
+                }
+                continue;
+            }
+
             // Extract name
             const nameMatch = firstCell.match(/Full Name:\s*(.+)/);
             if (nameMatch) {
@@ -935,6 +1143,9 @@ export class EmployeeService {
         // After the loop, save for the last employee
         if (currentEmployee.employeeId) {
             await this.saveAssignmentsToDatabase(currentEmployee.employeeId, currentAssignments, currentEmployeeGender);
+            await this.saveAbsentsToDatabase(currentEmployee.employeeId, currentAbsents);
+            await this.saveLeavesToDatabase(currentEmployee.employeeId, currentLeaves);
+            await this.saveRewardsToDatabase(currentEmployee.employeeId, currentRewards);
 
             // Also add to employeeDetails if not already added
             if (currentAssignments.length > 0) {
@@ -945,7 +1156,10 @@ export class EmployeeService {
                     dor: currentEmployee.dor,
                     joinDate: currentEmployee.joinDate,
                     permDate: currentEmployee.permDate,
-                    assignments: [...currentAssignments]
+                    assignments: [...currentAssignments],
+                    absents: [...currentAbsents],
+                    leaves: [...currentLeaves],
+                    rewardsPunishments: [...currentRewards]
                 };
                 employeeDetails.push(employeeDetail);
             }
@@ -1016,6 +1230,74 @@ export class EmployeeService {
             }
         } catch (e) {
             console.error(`Failed to update employee level for employeeId=${employee.employeeId}: ${e?.message || e}`);
+        }
+    }
+
+    /**
+     * Save absent rows for an employee
+     */
+    private async saveAbsentsToDatabase(employeeId: string, absents: any[]): Promise<void> {
+        if (!Array.isArray(absents) || absents.length === 0) return;
+        const idNum = parseInt(employeeId, 10);
+        for (const a of absents) {
+            try {
+                const entity = this.absentDetailRepository.create({
+                    employeeId: idNum,
+                    fromDateBS: a.fromDateBS || null,
+                    toDateBS: a.toDateBS || null,
+                    duration: a.duration || null,
+                    remarks: a.remarks || null,
+                });
+                await this.absentDetailRepository.save(entity);
+            } catch (e) {
+                console.error(`Failed saving absent for employeeId=${employeeId}: ${e?.message || e}`);
+            }
+        }
+    }
+
+    /**
+     * Save leave rows for an employee
+     */
+    private async saveLeavesToDatabase(employeeId: string, leaves: any[]): Promise<void> {
+        if (!Array.isArray(leaves) || leaves.length === 0) return;
+        const idNum = parseInt(employeeId, 10);
+        for (const l of leaves) {
+            try {
+                const entity = this.leaveDetailRepository.create({
+                    employeeId: idNum,
+                    fromDateBS: l.fromDateBS || null,
+                    toDateBS: l.toDateBS || null,
+                    leaveType: l.leaveType || null,
+                    duration: l.duration || null,
+                    remarks: l.remarks || null,
+                });
+                await this.leaveDetailRepository.save(entity);
+            } catch (e) {
+                console.error(`Failed saving leave for employeeId=${employeeId}: ${e?.message || e}`);
+            }
+        }
+    }
+
+    /**
+     * Save reward/punishment rows for an employee
+     */
+    private async saveRewardsToDatabase(employeeId: string, rewards: any[]): Promise<void> {
+        if (!Array.isArray(rewards) || rewards.length === 0) return;
+        const idNum = parseInt(employeeId, 10);
+        for (const r of rewards) {
+            try {
+                const entity = this.rewardPunishmentDetailRepository.create({
+                    employeeId: idNum,
+                    rpType: r.rpType || null,
+                    fromDateBS: r.fromDateBS || null,
+                    toDateBS: r.toDateBS || null,
+                    rpName: r.rpName || null,
+                    reason: r.reason || null,
+                });
+                await this.rewardPunishmentDetailRepository.save(entity);
+            } catch (e) {
+                console.error(`Failed saving reward/punishment for employeeId=${employeeId}: ${e?.message || e}`);
+            }
         }
     }
 

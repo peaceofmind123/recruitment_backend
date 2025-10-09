@@ -250,6 +250,18 @@ export class EmployeeService {
         });
     }
 
+    async getEmployeeAbsents(employeeId: number) {
+        return this.absentDetailRepository.find({ where: { employeeId }, order: { id: 'ASC' } });
+    }
+
+    async getEmployeeLeaves(employeeId: number) {
+        return this.leaveDetailRepository.find({ where: { employeeId }, order: { id: 'ASC' } });
+    }
+
+    async getEmployeeRewardsPunishments(employeeId: number) {
+        return this.rewardPunishmentDetailRepository.find({ where: { employeeId }, order: { id: 'ASC' } });
+    }
+
     /**
      * Get employee assignments with district, category, and Y/M/D diff (BS)
      */
@@ -1354,12 +1366,52 @@ export class EmployeeService {
         const num = typeof value === 'string' ? parseFloat(value) : value;
         const isNumber = !isNaN(num) && typeof num === 'number';
 
-        // Excel date numbers are typically between 1 and 100000
-        // For BS dates, we're looking for numbers that would convert to years around 2000-2100
-        // Excel number 36526 converts to 2000-01-01, and 73050 converts to 2100-01-01
-        const isInExcelDateRange = isNumber && num >= 36526 && num <= 73050;
+        // Excel date numbers (serials) commonly appear as 5-digit integers.
+        // Widen the acceptable range to include late 20th century through far future.
+        // 25569 => 1970-01-01, 36526 => 2000-01-01, 73050 => 2100-01-01
+        // We accept roughly 20000..120000 to capture older dates like 1990s (e.g., 35993) as well.
+        const isInExcelDateRange = isNumber && num >= 20000 && num <= 120000;
 
         return isInExcelDateRange;
+    }
+
+    /**
+     * Normalize a value to a BS date string (YYYY-MM-DD) if possible.
+     * - Excel serial -> treat as BS and convert via convertExcelDateToBS
+     * - Valid BS string -> normalize separators to '-'
+     * - ISO AD date -> convert to BS using formatBS
+     */
+    public async normalizeBsDateValue(value: any): Promise<string> {
+        if (value === null || value === undefined) return '';
+        const raw = typeof value === 'string' ? value.trim() : String(value);
+        if (!raw) return '';
+
+        // Ignore obvious header echoes
+        const lowered = raw.toLowerCase();
+        if (['from date', 'to date', 'date from', 'date to'].includes(lowered)) return '';
+
+        // Excel serial treated as BS directly
+        if (this.isExcelDateNumber(raw)) {
+            return this.convertExcelDateToBS(raw).replace(/\//g, '-');
+        }
+
+        // If looks like BS and validates, normalize
+        const maybeBs = raw.replace(/\./g, '-').replace(/\//g, '/');
+        if (this.isValidBSDate(maybeBs)) {
+            return maybeBs.replace(/\//g, '-');
+        }
+
+        // If looks like AD ISO date, convert to BS
+        const adLike = raw.replace(/\//g, '-');
+        const adDate = new Date(adLike);
+        if (!isNaN(adDate.getTime())) {
+            try {
+                const bs = await formatBS(adDate);
+                return (bs || '').replace(/\//g, '-');
+            } catch { /* fallthrough */ }
+        }
+
+        return raw; // fallback
     }
 
     public async calculateGeographicalMarksForAssignmentsAsync(assignments: AssignmentDetailDto[], gender: 'male' | 'female' | null): Promise<void> {

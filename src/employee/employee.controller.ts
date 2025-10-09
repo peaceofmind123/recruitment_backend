@@ -229,14 +229,34 @@ export class EmployeeController {
         // Use provided endDateBS as defaultEndDateBS for assignments
         const defaultEndForAssignments = endDateBS;
 
-        const [seniority, assignments] = await Promise.all([
+        const [seniority, assignments, absents, leaves, rewardsPunishments] = await Promise.all([
             this.employeeService.getEmployeeSeniorityData(id, endDateBS),
-            this.employeeService.getEmployeeAssignmentsWithExtras(id, effectiveStart, effectiveEnd, defaultEndForAssignments)
+            this.employeeService.getEmployeeAssignmentsWithExtras(id, effectiveStart, effectiveEnd, defaultEndForAssignments),
+            this.employeeService.getEmployeeAbsents(id),
+            this.employeeService.getEmployeeLeaves(id),
+            this.employeeService.getEmployeeRewardsPunishments(id),
         ]);
 
         if (!seniority) {
             throw new NotFoundException('Employee not found or missing seniority date');
         }
+
+        // Normalize BS dates for absents, leaves, rewards/punishments
+        const normAbsents = await Promise.all((absents as any[]).map(async a => ({
+            ...a,
+            fromDateBS: await this.employeeService.normalizeBsDateValue(a.fromDateBS),
+            toDateBS: await this.employeeService.normalizeBsDateValue(a.toDateBS),
+        })));
+        const normLeaves = await Promise.all((leaves as any[]).map(async l => ({
+            ...l,
+            fromDateBS: await this.employeeService.normalizeBsDateValue(l.fromDateBS),
+            toDateBS: await this.employeeService.normalizeBsDateValue(l.toDateBS),
+        })));
+        const normRps = await Promise.all((rewardsPunishments as any[]).map(async r => ({
+            ...r,
+            fromDateBS: await this.employeeService.normalizeBsDateValue(r.fromDateBS),
+            toDateBS: await this.employeeService.normalizeBsDateValue(r.toDateBS),
+        })));
 
         return {
             // Flatten details
@@ -254,7 +274,10 @@ export class EmployeeController {
             months: seniority.months,
             days: seniority.days,
             // Keep assignments array
-            assignments: assignments as any
+            assignments: assignments as any,
+            absents: normAbsents as any,
+            leaves: normLeaves as any,
+            rewardsPunishments: normRps as any
         };
     }
 } 

@@ -1,5 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { AssignmentWithExtrasDto } from './assignment-with-extras.dto';
+import { AbsentDetailDto } from './absent-detail.dto';
+import { LeaveDetailDto } from './leave-detail.dto';
+import { RewardPunishmentDetailDto } from './reward-punishment-detail.dto';
 
 export class EmployeeCompleteDetailsDto {
     // Flattened from EmployeeBasicDetailsDto
@@ -43,6 +46,15 @@ export class EmployeeCompleteDetailsDto {
     // Assignments array remains nested as items
     @ApiProperty({ type: [AssignmentWithExtrasDto] })
     assignments: AssignmentWithExtrasDto[];
+
+    @ApiProperty({ type: [AbsentDetailDto] })
+    absents: AbsentDetailDto[];
+
+    @ApiProperty({ type: [LeaveDetailDto] })
+    leaves: LeaveDetailDto[];
+
+    @ApiProperty({ type: [RewardPunishmentDetailDto] })
+    rewardsPunishments: RewardPunishmentDetailDto[];
 }
 
 

@@ -10,7 +10,7 @@ import { EmployeeSeniorityDataDto } from './dto/employee-seniority-data.dto';
 import { AssignmentDetail } from './entities/assignment-detail.entity';
 import { AssignmentWithExtrasDto } from './dto/assignment-with-extras.dto';
 import { EmployeeCompleteDetailsDto } from './dto/employee-complete-details.dto';
-import { ymdFromDurationDaysBS } from '../common/utils/nepali-date.utils';
+import { ymdFromDurationDaysBS, formatBS } from '../common/utils/nepali-date.utils';
 
 @ApiTags('Employee')
 @Controller('employee')
@@ -203,6 +203,7 @@ export class EmployeeController {
     @ApiQuery({ name: 'endLevel', type: Number, required: false })
     @ApiQuery({ name: 'defaultEndDateBS', type: String, required: false })
     @ApiQuery({ name: 'endDateBS', type: String, required: false, description: 'Optional BS end date for seniority (YYYY-MM-DD or YYYY/MM/DD)' })
+    @ApiQuery({ name: 'leaveType', type: String, required: false, description: 'Optional filter to include only leaves of a specific type' })
     @ApiResponse({ status: 200, type: EmployeeCompleteDetailsDto })
     async getEmployeeCompleteDetails(
         @Query('employeeId') employeeId: string,
@@ -210,6 +211,7 @@ export class EmployeeController {
         @Query('endLevel') endLevel?: string,
         @Query('defaultEndDateBS') defaultEndDateBS?: string,
         @Query('endDateBS') endDateBS?: string,
+        @Query('leaveType') leaveType?: string,
     ): Promise<EmployeeCompleteDetailsDto> {
         const id = parseInt(employeeId, 10);
         if (isNaN(id)) {
@@ -234,7 +236,7 @@ export class EmployeeController {
             this.employeeService.getEmployeeSeniorityData(id, endDateBS),
             this.employeeService.getEmployeeAssignmentsWithExtras(id, effectiveStart, effectiveEnd, defaultEndForAssignments),
             this.employeeService.getEmployeeAbsents(id),
-            this.employeeService.getEmployeeLeaves(id),
+            this.employeeService.getEmployeeLeaves(id, leaveType),
             this.employeeService.getEmployeeRewardsPunishments(id),
         ]);
 
@@ -244,8 +246,17 @@ export class EmployeeController {
 
         // Normalize BS dates for absents, leaves, rewards/punishments; compute Y/M/D from duration days
         const normAbsents = await Promise.all((absents as any[]).map(async a => {
-            const fromBS = await this.employeeService.normalizeBsDateValue(a.fromDateBS);
-            const toBS = await this.employeeService.normalizeBsDateValue(a.toDateBS);
+            let fromBS = await this.employeeService.normalizeBsDateValue(a.fromDateBS);
+            let toBS = await this.employeeService.normalizeBsDateValue(a.toDateBS);
+            // If still AD-like after normalization, force AD->BS conversion
+            const yFrom = fromBS && /^\d{4}-\d{2}-\d{2}$/.test(fromBS) ? parseInt(fromBS.slice(0, 4), 10) : undefined;
+            if (yFrom !== undefined && yFrom < 2000) {
+                try { fromBS = (await formatBS(new Date(fromBS))).replace(/\//g, '-'); } catch { }
+            }
+            const yTo = toBS && /^\d{4}-\d{2}-\d{2}$/.test(toBS) ? parseInt(toBS.slice(0, 4), 10) : undefined;
+            if (yTo !== undefined && yTo < 2000) {
+                try { toBS = (await formatBS(new Date(toBS))).replace(/\//g, '-'); } catch { }
+            }
             const durationDays = Math.max(0, parseInt(a.duration, 10) || 0);
             let { years, months, days } = await ymdFromDurationDaysBS(durationDays);
             if (durationDays > 0 && years === 0 && months === 0 && days === 0) {
@@ -259,8 +270,16 @@ export class EmployeeController {
             return { ...a, fromDateBS: fromBS, toDateBS: toBS, years, months, days, totalNumDays };
         }));
         const normLeaves = await Promise.all((leaves as any[]).map(async l => {
-            const fromBS = await this.employeeService.normalizeBsDateValue(l.fromDateBS);
-            const toBS = await this.employeeService.normalizeBsDateValue(l.toDateBS);
+            let fromBS = await this.employeeService.normalizeBsDateValue(l.fromDateBS);
+            let toBS = await this.employeeService.normalizeBsDateValue(l.toDateBS);
+            const yFrom = fromBS && /^\d{4}-\d{2}-\d{2}$/.test(fromBS) ? parseInt(fromBS.slice(0, 4), 10) : undefined;
+            if (yFrom !== undefined && yFrom < 2000) {
+                try { fromBS = (await formatBS(new Date(fromBS))).replace(/\//g, '-'); } catch { }
+            }
+            const yTo = toBS && /^\d{4}-\d{2}-\d{2}$/.test(toBS) ? parseInt(toBS.slice(0, 4), 10) : undefined;
+            if (yTo !== undefined && yTo < 2000) {
+                try { toBS = (await formatBS(new Date(toBS))).replace(/\//g, '-'); } catch { }
+            }
             const durationDays = Math.max(0, parseInt(l.duration, 10) || 0);
             let { years, months, days } = await ymdFromDurationDaysBS(durationDays);
             if (durationDays > 0 && years === 0 && months === 0 && days === 0) {
@@ -274,8 +293,16 @@ export class EmployeeController {
             return { ...l, fromDateBS: fromBS, toDateBS: toBS, years, months, days, totalNumDays };
         }));
         const normRps = await Promise.all((rewardsPunishments as any[]).map(async r => {
-            const fromBS = await this.employeeService.normalizeBsDateValue(r.fromDateBS);
-            const toBS = await this.employeeService.normalizeBsDateValue(r.toDateBS);
+            let fromBS = await this.employeeService.normalizeBsDateValue(r.fromDateBS);
+            let toBS = await this.employeeService.normalizeBsDateValue(r.toDateBS);
+            const yFrom = fromBS && /^\d{4}-\d{2}-\d{2}$/.test(fromBS) ? parseInt(fromBS.slice(0, 4), 10) : undefined;
+            if (yFrom !== undefined && yFrom < 2000) {
+                try { fromBS = (await formatBS(new Date(fromBS))).replace(/\//g, '-'); } catch { }
+            }
+            const yTo = toBS && /^\d{4}-\d{2}-\d{2}$/.test(toBS) ? parseInt(toBS.slice(0, 4), 10) : undefined;
+            if (yTo !== undefined && yTo < 2000) {
+                try { toBS = (await formatBS(new Date(toBS))).replace(/\//g, '-'); } catch { }
+            }
             const durationDays = Math.max(0, parseInt(r.duration, 10) || 0);
             let { years, months, days } = await ymdFromDurationDaysBS(durationDays);
             if (durationDays > 0 && years === 0 && months === 0 && days === 0) {

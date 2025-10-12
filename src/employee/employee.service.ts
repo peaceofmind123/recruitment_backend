@@ -254,8 +254,12 @@ export class EmployeeService {
         return this.absentDetailRepository.find({ where: { employeeId }, order: { id: 'ASC' } });
     }
 
-    async getEmployeeLeaves(employeeId: number) {
-        return this.leaveDetailRepository.find({ where: { employeeId }, order: { id: 'ASC' } });
+    async getEmployeeLeaves(employeeId: number, leaveType?: string) {
+        const where: any = { employeeId };
+        if (leaveType && leaveType.trim()) {
+            where.leaveType = leaveType.trim();
+        }
+        return this.leaveDetailRepository.find({ where, order: { id: 'ASC' } });
     }
 
     async getEmployeeRewardsPunishments(employeeId: number) {

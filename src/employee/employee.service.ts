@@ -1395,13 +1395,7 @@ export class EmployeeService {
             return this.convertExcelDateToBS(raw).replace(/\//g, '-');
         }
 
-        // If looks like BS and validates, normalize
-        const maybeBs = raw.replace(/\./g, '-').replace(/\//g, '/');
-        if (this.isValidBSDate(maybeBs)) {
-            return maybeBs.replace(/\//g, '-');
-        }
-
-        // If looks like AD ISO date, convert to BS
+        // If looks like AD ISO date, convert to BS first (to avoid misclassifying as BS)
         const adLike = raw.replace(/\//g, '-');
         const adDate = new Date(adLike);
         if (!isNaN(adDate.getTime())) {
@@ -1409,6 +1403,12 @@ export class EmployeeService {
                 const bs = await formatBS(adDate);
                 return (bs || '').replace(/\//g, '-');
             } catch { /* fallthrough */ }
+        }
+
+        // If looks like BS and validates, normalize
+        const maybeBs = raw.replace(/\./g, '-').replace(/\//g, '/');
+        if (this.isValidBSDate(maybeBs)) {
+            return maybeBs.replace(/\//g, '-');
         }
 
         return raw; // fallback

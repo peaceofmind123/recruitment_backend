@@ -140,3 +140,21 @@ export async function splitDaysByBreakBS(startDateBS: string, endDateBS: string,
     }
 }
 
+
+/**
+ * Convert a total number of days into a Nepali Y/M/D duration by adding days to a fixed BS anchor.
+ * Uses nepali-date-library date arithmetic to honor variable Nepali month lengths.
+ */
+export async function ymdFromDurationDaysBS(totalDays: number): Promise<NepaliDiff> {
+    const lib: any = await (eval('import("nepali-date-library")'));
+    const NepaliDate = lib.NepaliDate || (lib.default && lib.default.NepaliDate);
+
+    const safeDays = Math.max(0, Math.floor(Number(totalDays) || 0));
+
+    const anchor = new NepaliDate('2070-01-01');
+    const end = new NepaliDate('2070-01-01');
+    end.addDays(safeDays);
+
+    // Reuse diff logic for accurate Y/M/D breakdown
+    return await diffNepaliYMD(anchor.format('YYYY-MM-DD'), end.format('YYYY-MM-DD'));
+}

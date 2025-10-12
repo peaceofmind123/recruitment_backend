@@ -10,6 +10,7 @@ import { EmployeeSeniorityDataDto } from './dto/employee-seniority-data.dto';
 import { AssignmentDetail } from './entities/assignment-detail.entity';
 import { AssignmentWithExtrasDto } from './dto/assignment-with-extras.dto';
 import { EmployeeCompleteDetailsDto } from './dto/employee-complete-details.dto';
+import { ymdFromDurationDaysBS } from '../common/utils/nepali-date.utils';
 
 @ApiTags('Employee')
 @Controller('employee')
@@ -241,22 +242,52 @@ export class EmployeeController {
             throw new NotFoundException('Employee not found or missing seniority date');
         }
 
-        // Normalize BS dates for absents, leaves, rewards/punishments
-        const normAbsents = await Promise.all((absents as any[]).map(async a => ({
-            ...a,
-            fromDateBS: await this.employeeService.normalizeBsDateValue(a.fromDateBS),
-            toDateBS: await this.employeeService.normalizeBsDateValue(a.toDateBS),
-        })));
-        const normLeaves = await Promise.all((leaves as any[]).map(async l => ({
-            ...l,
-            fromDateBS: await this.employeeService.normalizeBsDateValue(l.fromDateBS),
-            toDateBS: await this.employeeService.normalizeBsDateValue(l.toDateBS),
-        })));
-        const normRps = await Promise.all((rewardsPunishments as any[]).map(async r => ({
-            ...r,
-            fromDateBS: await this.employeeService.normalizeBsDateValue(r.fromDateBS),
-            toDateBS: await this.employeeService.normalizeBsDateValue(r.toDateBS),
-        })));
+        // Normalize BS dates for absents, leaves, rewards/punishments; compute Y/M/D from duration days
+        const normAbsents = await Promise.all((absents as any[]).map(async a => {
+            const fromBS = await this.employeeService.normalizeBsDateValue(a.fromDateBS);
+            const toBS = await this.employeeService.normalizeBsDateValue(a.toDateBS);
+            const durationDays = Math.max(0, parseInt(a.duration, 10) || 0);
+            let { years, months, days } = await ymdFromDurationDaysBS(durationDays);
+            if (durationDays > 0 && years === 0 && months === 0 && days === 0) {
+                const y = Math.floor(durationDays / 365);
+                const remAfterY = durationDays - y * 365;
+                const m = Math.floor(remAfterY / 30);
+                const d = remAfterY - m * 30;
+                years = y; months = m; days = d;
+            }
+            const totalNumDays = durationDays;
+            return { ...a, fromDateBS: fromBS, toDateBS: toBS, years, months, days, totalNumDays };
+        }));
+        const normLeaves = await Promise.all((leaves as any[]).map(async l => {
+            const fromBS = await this.employeeService.normalizeBsDateValue(l.fromDateBS);
+            const toBS = await this.employeeService.normalizeBsDateValue(l.toDateBS);
+            const durationDays = Math.max(0, parseInt(l.duration, 10) || 0);
+            let { years, months, days } = await ymdFromDurationDaysBS(durationDays);
+            if (durationDays > 0 && years === 0 && months === 0 && days === 0) {
+                const y = Math.floor(durationDays / 365);
+                const remAfterY = durationDays - y * 365;
+                const m = Math.floor(remAfterY / 30);
+                const d = remAfterY - m * 30;
+                years = y; months = m; days = d;
+            }
+            const totalNumDays = durationDays;
+            return { ...l, fromDateBS: fromBS, toDateBS: toBS, years, months, days, totalNumDays };
+        }));
+        const normRps = await Promise.all((rewardsPunishments as any[]).map(async r => {
+            const fromBS = await this.employeeService.normalizeBsDateValue(r.fromDateBS);
+            const toBS = await this.employeeService.normalizeBsDateValue(r.toDateBS);
+            const durationDays = Math.max(0, parseInt(r.duration, 10) || 0);
+            let { years, months, days } = await ymdFromDurationDaysBS(durationDays);
+            if (durationDays > 0 && years === 0 && months === 0 && days === 0) {
+                const y = Math.floor(durationDays / 365);
+                const remAfterY = durationDays - y * 365;
+                const m = Math.floor(remAfterY / 30);
+                const d = remAfterY - m * 30;
+                years = y; months = m; days = d;
+            }
+            const totalNumDays = durationDays;
+            return { ...r, fromDateBS: fromBS, toDateBS: toBS, years, months, days, totalNumDays };
+        }));
 
         return {
             // Flatten details

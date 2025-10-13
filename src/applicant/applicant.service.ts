@@ -5,6 +5,8 @@ import { Applicant } from './entities/applicant.entity';
 import { CreateApplicantDto } from './dto/create-applicant.dto';
 import { SeniorityDetailsDto } from './dto/seniority-details.dto';
 import { ScorecardDto, AssignmentDetailDto } from './dto/scorecard.dto';
+import { ApplicantCompleteDetailsDto } from './dto/applicant-complete-details.dto';
+import { EmployeeService } from '../employee/employee.service';
 import { Employee } from '../employee/entities/employee.entity';
 import { Vacancy } from '../vacancy/entities/vacancy.entity';
 import { AssignmentDetail } from '../employee/entities/assignment-detail.entity';
@@ -29,6 +31,7 @@ export class ApplicantService {
         private districtRepository: Repository<District>,
         @InjectRepository(CategoryMarks)
         private categoryMarksRepository: Repository<CategoryMarks>,
+        private readonly employeeService: EmployeeService,
     ) { }
 
     async create(createApplicantDto: CreateApplicantDto): Promise<Applicant> {
@@ -133,7 +136,7 @@ export class ApplicantService {
         return seniorityDetails;
     }
 
-    async getScorecard(employeeId: number, bigyapanNo: string): Promise<ScorecardDto> {
+    async getScorecard(employeeId: number, bigyapanNo: string): Promise<ApplicantCompleteDetailsDto> {
         // Find the applicant with relations
         const applicant = await this.applicantRepository.findOne({
             where: { employeeId, bigyapanNo },
@@ -144,152 +147,69 @@ export class ApplicantService {
             throw new NotFoundException(`Applicant with employee ID ${employeeId} and bigyapan number ${bigyapanNo} not found`);
         }
 
-        // Find all assignment details for the employee
-        const assignments = await this.assignmentDetailRepository.find({
-            where: { employeeId },
-            order: { startDate: 'ASC' }
-        });
-
-        // Calculate time elapsed between seniority date and bigyapan end date
-        const seniorityDate = new Date(applicant.employee.seniorityDate);
-        const bigyapanEndDate = applicant.vacancy.bigyapanEndDate;
-
-        if (!bigyapanEndDate) {
-            throw new NotFoundException(`Bigyapan end date not found for vacancy ${bigyapanNo}`);
+        // Reuse employee service to build the base complete-details shape
+        const details = await this.employeeService.getEmployeeBasicDetails(employeeId);
+        if (!details) {
+            throw new NotFoundException('Employee not found');
         }
 
-        const endDate = new Date(bigyapanEndDate);
-        const timeDiff = endDate.getTime() - seniorityDate.getTime();
+        const endDateBS = await (async () => {
+            // Bigyapan end date is AD; convert to BS string used by employee endpoints
+            // employeeService.getEmployeeSeniorityData will handle validation and conversion
+            // We format to BS via common util and then pass to seniority function to keep behavior consistent
+            const { formatBS } = await import('../common/utils/nepali-date.utils');
+            return await formatBS(applicant.vacancy.bigyapanEndDate as any);
+        })();
 
-        // Calculate years, months, and days
-        const yearsElapsed = Math.floor(timeDiff / (1000 * 60 * 60 * 24 * 365.25));
-        const remainingDays = timeDiff % (1000 * 60 * 60 * 24 * 365.25);
-        const monthsElapsed = Math.floor(remainingDays / (1000 * 60 * 60 * 24 * 30.44));
-        const daysElapsed = Math.floor((remainingDays % (1000 * 60 * 60 * 24 * 30.44)) / (1000 * 60 * 60 * 24));
+        const [seniority, assignments, absents, leaves, rewardsPunishments] = await Promise.all([
+            this.employeeService.getEmployeeSeniorityData(employeeId, endDateBS),
+            this.employeeService.getEmployeeAssignmentsWithExtras(employeeId, details.level ?? undefined, undefined, endDateBS),
+            this.employeeService.getEmployeeAbsents(employeeId),
+            this.employeeService.getEmployeeLeaves(employeeId),
+            this.employeeService.getEmployeeRewardsPunishments(employeeId),
+        ]);
 
-        // Calculate marks
-        const yearMarks = yearsElapsed * 3.75;
-        const monthMarks = monthsElapsed * (3.75 / 12);
-        const daysMarks = daysElapsed * (3.75 / 365);
+        if (!seniority) {
+            throw new NotFoundException('Employee not found or missing seniority date');
+        }
 
-        // Process assignment details with calculated time periods and additional data
-        const assignmentDetails: AssignmentDetailDto[] = await Promise.all(assignments.map(async (assignment) => {
-            const totalDays = assignment.totalNumDays || 0;
-            const years = Math.floor(totalDays / 365.25);
-            const remainingDaysAfterYears = totalDays % 365.25;
-            const months = Math.floor(remainingDaysAfterYears / 30.44);
-            const days = Math.floor(remainingDaysAfterYears % 30.44);
-
-            // Get office information
-            const office = await this.officeRepository.findOne({
-                where: { name: assignment.workOffice }
-            });
-
-            let district: string | undefined = undefined;
-            let districtCategory: string | undefined = undefined;
-            let categoryMarks: number | undefined = undefined;
-            let categoryMarksType: string | undefined = undefined;
-
-            if (office) {
-                district = office.district;
-
-                // Get district information
-                const districtEntity = await this.districtRepository.findOne({
-                    where: { name: office.district }
-                });
-
-                if (districtEntity) {
-                    districtCategory = districtEntity.category;
-
-                    // Get category marks for the employee's gender
-                    // Convert sex to gender format
-                    const gender: string | undefined = applicant.employee.sex === 'M' ? 'male' : applicant.employee.sex === 'F' ? 'female' : undefined;
-
-                    // Try to find category marks for the specific category and gender
-                    let categoryMarksEntity: CategoryMarks | null = null;
-
-                    if (gender) {
-                        categoryMarksEntity = await this.categoryMarksRepository.findOne({
-                            where: {
-                                category: districtEntity.category,
-                                gender: gender
-                            }
-                        });
-                    }
-
-                    // If not found, try to find any category marks for this category (for 'new' type)
-                    if (!categoryMarksEntity) {
-                        categoryMarksEntity = await this.categoryMarksRepository.findOne({
-                            where: {
-                                category: districtEntity.category,
-                                type: 'new'
-                            }
-                        });
-                    }
-
-
-
-                    if (categoryMarksEntity) {
-                        categoryMarks = categoryMarksEntity.marks;
-                        categoryMarksType = categoryMarksEntity.type;
-                    }
-                }
-            }
-
-            return {
-                employeeId: assignment.employeeId,
-                startDateBS: assignment.startDateBS,
-                endDateBS: assignment.endDateBS,
-                position: assignment.position,
-                jobs: assignment.jobs,
-                function: assignment.function,
-                empCategory: assignment.empCategory,
-                empType: assignment.empType,
-                workOffice: assignment.workOffice,
-                seniorityDateBS: assignment.seniorityDateBS,
-                level: assignment.level,
-                permLevelDateBS: assignment.permLevelDateBS,
-                reasonForPosition: assignment.reasonForPosition,
-                startDate: assignment.startDate,
-                seniorityDate: assignment.seniorityDate,
-                totalGeographicalMarks: assignment.totalGeographicalMarks,
-                numDaysOld: assignment.numDaysOld,
-                numDaysNew: assignment.numDaysNew,
-                totalNumDays: assignment.totalNumDays,
-                numYears: years,
-                numMonths: months,
-                numDays: days,
-                district,
-                districtCategory,
-                categoryMarks,
-                categoryMarksType
-            };
-        }));
-
-        const scorecard: ScorecardDto = {
-            employeeId: applicant.employeeId,
-            name: applicant.employee.name,
-            level: applicant.employee.level,
-            currentPosition: applicant.employee.position || 'Not assigned',
-            workingOffice: applicant.employee.workingOffice,
-            service: applicant.vacancy.service,
-            group: applicant.vacancy.group,
-            subgroup: applicant.vacancy.subGroup,
-            dob: applicant.employee.dob,
-            appliedPosition: applicant.vacancy.position,
-            seniorityDate: applicant.employee.seniorityDate,
-            bigyapanEndDate: endDate,
-            yearsElapsed,
-            monthsElapsed,
-            daysElapsed,
-            seniorityMarks: applicant.seniorityMarks || 0,
-            yearMarks,
-            monthMarks,
-            daysMarks,
-            sex: applicant.employee.sex,
-            assignments: assignmentDetails
+        // Normalize absents/leaves/rewards BS dates and durations like employee endpoint
+        const ymdFromDurationDaysBS = (await import('../common/utils/nepali-date.utils')).ymdFromDurationDaysBS;
+        const normalizeList = async (items: any[]) => {
+            return Promise.all(items.map(async (it: any) => {
+                const durationDays = Math.max(0, parseInt(it.duration, 10) || 0);
+                const ymd = await ymdFromDurationDaysBS(durationDays);
+                return { ...it, years: ymd.years, months: ymd.months, days: ymd.days, totalNumDays: durationDays };
+            }));
         };
 
-        return scorecard;
+        const normAbsents = await normalizeList(absents as any[]);
+        const normLeaves = await normalizeList(leaves as any[]);
+        const normRps = await normalizeList(rewardsPunishments as any[]);
+
+        const response: ApplicantCompleteDetailsDto = {
+            employeeId: details.employeeId,
+            name: details.name,
+            level: details.level,
+            workingOffice: details.workingOffice,
+            position: details.position,
+            dob: details.dob,
+            group: details.group,
+            seniorityDateBS: seniority.seniorityDateBS,
+            endDateBS: seniority.endDateBS,
+            years: seniority.years,
+            months: seniority.months,
+            days: seniority.days,
+            assignments: assignments as any,
+            absents: normAbsents as any,
+            leaves: normLeaves as any,
+            rewardsPunishments: normRps as any,
+            // Extras from vacancy
+            service: applicant.vacancy.service,
+            subgroup: applicant.vacancy.subGroup,
+            appliedPosition: applicant.vacancy.position,
+        };
+
+        return response;
     }
 } 

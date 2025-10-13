@@ -15,6 +15,6 @@ import { RewardPunishmentDetailEntity } from './entities/reward-punishment-detai
     imports: [TypeOrmModule.forFeature([Employee, Qualification, EmployeeDetail, AssignmentDetail, AbsentDetailEntity, LeaveDetailEntity, RewardPunishmentDetailEntity]), CommonModule],
     controllers: [EmployeeController],
     providers: [EmployeeService],
-    exports: [TypeOrmModule],
+    exports: [TypeOrmModule, EmployeeService],
 })
 export class EmployeeModule { } 

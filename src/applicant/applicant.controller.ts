@@ -5,6 +5,7 @@ import { CreateApplicantDto } from './dto/create-applicant.dto';
 import { Applicant } from './entities/applicant.entity';
 import { SeniorityDetailsDto } from './dto/seniority-details.dto';
 import { ScorecardDto } from './dto/scorecard.dto';
+import { ApplicantCompleteDetailsDto } from './dto/applicant-complete-details.dto';
 
 @ApiTags('applicants')
 @Controller('applicant')
@@ -113,8 +114,8 @@ export class ApplicantController {
     })
     @ApiResponse({
         status: HttpStatus.OK,
-        description: 'Returns the scorecard for the applicant with assignment details and calculated time periods.',
-        type: ScorecardDto
+        description: 'Returns applicant complete details identical to employee complete-details plus vacancy fields.',
+        type: ApplicantCompleteDetailsDto
     })
     @ApiResponse({
         status: HttpStatus.NOT_FOUND,
@@ -123,7 +124,7 @@ export class ApplicantController {
     getScorecard(
         @Query('employeeId') employeeId: string,
         @Query('bigyapanNo') bigyapanNo: string
-    ): Promise<ScorecardDto> {
+    ): Promise<ApplicantCompleteDetailsDto> {
         return this.applicantService.getScorecard(+employeeId, bigyapanNo);
     }
 } 

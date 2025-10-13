@@ -155,23 +155,30 @@ export class ApplicantService {
 
         const endDateBS = await (async () => {
             // Bigyapan end date is AD; convert to BS string used by employee endpoints
-            // employeeService.getEmployeeSeniorityData will handle validation and conversion
-            // We format to BS via common util and then pass to seniority function to keep behavior consistent
             const { formatBS } = await import('../common/utils/nepali-date.utils');
             return await formatBS(applicant.vacancy.bigyapanEndDate as any);
         })();
 
-        const [seniority, assignments, absents, leaves, rewardsPunishments] = await Promise.all([
-            this.employeeService.getEmployeeSeniorityData(employeeId, endDateBS),
+        // Compute seniority in BS directly; if end < start, diff util returns zeros (no throw)
+        const seniority = await (async () => {
+            const { formatBS, diffNepaliYMD } = await import('../common/utils/nepali-date.utils');
+            const startBS = await formatBS(applicant.employee.seniorityDate as any);
+            const ymd = await diffNepaliYMD(startBS, endDateBS);
+            return {
+                seniorityDateBS: startBS,
+                endDateBS,
+                years: ymd.years,
+                months: ymd.months,
+                days: ymd.days,
+            };
+        })();
+
+        const [assignments, absents, leaves, rewardsPunishments] = await Promise.all([
             this.employeeService.getEmployeeAssignmentsWithExtras(employeeId, details.level ?? undefined, undefined, endDateBS),
             this.employeeService.getEmployeeAbsents(employeeId),
             this.employeeService.getEmployeeLeaves(employeeId),
             this.employeeService.getEmployeeRewardsPunishments(employeeId),
         ]);
-
-        if (!seniority) {
-            throw new NotFoundException('Employee not found or missing seniority date');
-        }
 
         // Normalize absents/leaves/rewards BS dates and durations like employee endpoint
         const ymdFromDurationDaysBS = (await import('../common/utils/nepali-date.utils')).ymdFromDurationDaysBS;
@@ -208,6 +215,7 @@ export class ApplicantService {
             service: applicant.vacancy.service,
             subgroup: applicant.vacancy.subGroup,
             appliedPosition: applicant.vacancy.position,
+            bigyapanEndDateBS: endDateBS,
         };
 
         return response;

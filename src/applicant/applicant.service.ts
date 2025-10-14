@@ -156,13 +156,13 @@ export class ApplicantService {
         const endDateBS = await (async () => {
             // Bigyapan end date is AD; convert to BS string used by employee endpoints
             const { formatBS } = await import('../common/utils/nepali-date.utils');
-            return await formatBS(applicant.vacancy.bigyapanEndDate as any);
+            return await formatBS(new Date(applicant.vacancy.bigyapanEndDate as any));
         })();
 
         // Compute seniority in BS directly; if end < start, diff util returns zeros (no throw)
         const seniority = await (async () => {
             const { formatBS, diffNepaliYMD } = await import('../common/utils/nepali-date.utils');
-            const startBS = await formatBS(applicant.employee.seniorityDate as any);
+            const startBS = await formatBS(new Date(applicant.employee.seniorityDate as any));
             const ymd = await diffNepaliYMD(startBS, endDateBS);
             return {
                 seniorityDateBS: startBS,

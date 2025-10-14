@@ -53,6 +53,12 @@ export class ApplicantController {
         description: 'Bigyapan number of the vacancy',
         type: String
     })
+    @ApiQuery({
+        name: 'leaveType',
+        required: false,
+        description: 'Optional filter to include only leaves of a specific type',
+        type: String
+    })
     @ApiResponse({
         status: HttpStatus.OK,
         description: 'Returns the applicant with the specified employee ID and bigyapan number.',
@@ -123,8 +129,9 @@ export class ApplicantController {
     })
     getScorecard(
         @Query('employeeId') employeeId: string,
-        @Query('bigyapanNo') bigyapanNo: string
+        @Query('bigyapanNo') bigyapanNo: string,
+        @Query('leaveType') leaveType?: string
     ): Promise<ApplicantCompleteDetailsDto> {
-        return this.applicantService.getScorecard(+employeeId, bigyapanNo);
+        return this.applicantService.getScorecard(+employeeId, bigyapanNo, leaveType);
     }
 } 

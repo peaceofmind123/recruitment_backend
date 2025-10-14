@@ -136,7 +136,7 @@ export class ApplicantService {
         return seniorityDetails;
     }
 
-    async getScorecard(employeeId: number, bigyapanNo: string): Promise<ApplicantCompleteDetailsDto> {
+    async getScorecard(employeeId: number, bigyapanNo: string, leaveType?: string): Promise<ApplicantCompleteDetailsDto> {
         // Find the applicant with relations
         const applicant = await this.applicantRepository.findOne({
             where: { employeeId, bigyapanNo },
@@ -176,7 +176,7 @@ export class ApplicantService {
         const [assignments, absents, leaves, rewardsPunishments] = await Promise.all([
             this.employeeService.getEmployeeAssignmentsWithExtras(employeeId, details.level ?? undefined, undefined, endDateBS),
             this.employeeService.getEmployeeAbsents(employeeId),
-            this.employeeService.getEmployeeLeaves(employeeId),
+            this.employeeService.getEmployeeLeaves(employeeId, leaveType),
             this.employeeService.getEmployeeRewardsPunishments(employeeId),
         ]);
 

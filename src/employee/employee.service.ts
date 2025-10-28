@@ -371,11 +371,115 @@ export class EmployeeService {
         }));
 
         // Flatten segments
-        const flattened = expanded.flat();
+        let flattened = expanded.flat();
+
+        // Further split assignment segments by absences and NON STANDARD leaves
+        try {
+            const rawAbsents = await this.getEmployeeAbsents(employeeId);
+            const rawLeaves = await this.getEmployeeLeaves(employeeId);
+
+            const normalize = async (v: any) => (await this.normalizeBsDateValue(v)).replace(/\//g, '-');
+            const isValid = (s: string) => /^(\d{4})-(\d{2})-(\d{2})$/.test(s);
+
+            type BreakSeg = { start: string; end: string; remarks: string };
+            const breaks: BreakSeg[] = [];
+            for (const a of rawAbsents as any[]) {
+                const s = await normalize(a.fromDateBS);
+                const e = await normalize(a.toDateBS);
+                if (isValid(s) && isValid(e) && s < e) {
+                    breaks.push({ start: s, end: e, remarks: 'absent' });
+                }
+            }
+            for (const l of rawLeaves as any[]) {
+                if ((l.leaveType || '').toString().trim().toUpperCase() !== 'NON STANDARD') continue;
+                const s = await normalize(l.fromDateBS);
+                const e = await normalize(l.toDateBS);
+                if (isValid(s) && isValid(e) && s < e) {
+                    breaks.push({ start: s, end: e, remarks: 'non-standard leave' });
+                }
+            }
+
+            breaks.sort((b1, b2) => (b1.start < b2.start ? -1 : b1.start > b2.start ? 1 : (b1.end < b2.end ? -1 : b1.end > b2.end ? 1 : 0)));
+
+            const splitSegments: any[] = [];
+            for (const base of flattened) {
+                const segStart = (base.startDateBS || '').replace(/\//g, '-');
+                const segEnd = (base.endDateBS || '').replace(/\//g, '-');
+                if (!isValid(segStart) || !isValid(segEnd) || !(segStart < segEnd)) {
+                    splitSegments.push(base);
+                    continue;
+                }
+                let current = segStart;
+                for (const br of breaks) {
+                    if (br.end <= current || br.start >= segEnd) {
+                        continue;
+                    }
+                    const normalStart = current;
+                    const normalEnd = br.start > segEnd ? segEnd : br.start;
+                    if (normalStart < normalEnd) {
+                        // normal subsegment
+                        let years = 0, months = 0, days = 0, totalNumDays = 0; let beforeBreak: boolean | undefined = undefined;
+                        try {
+                            const diff = await diffNepaliYMDWithTotalDays(normalStart, normalEnd);
+                            years = diff.years; months = diff.months; days = diff.days; totalNumDays = diff.totalNumDays;
+                            if (breakADMain) {
+                                const segEndNd = this.parseBSDate(normalEnd.replace(/-/g, '/'));
+                                if (segEndNd) {
+                                    const segEndAD = segEndNd.getDateObject();
+                                    beforeBreak = segEndAD.getTime() <= breakADMain.getTime();
+                                }
+                            }
+                        } catch { }
+                        splitSegments.push({ ...base, startDateBS: normalStart, endDateBS: normalEnd, years, months, days, totalNumDays, beforeBreak });
+                    }
+                    const breakStart = br.start < current ? current : br.start;
+                    const breakEnd = br.end > segEnd ? segEnd : br.end;
+                    if (breakStart < breakEnd) {
+                        // absent/non-standard subsegment
+                        let years = 0, months = 0, days = 0, totalNumDays = 0; let beforeBreak: boolean | undefined = undefined;
+                        try {
+                            const diff = await diffNepaliYMDWithTotalDays(breakStart, breakEnd);
+                            years = diff.years; months = diff.months; days = diff.days; totalNumDays = diff.totalNumDays;
+                            if (breakADMain) {
+                                const segEndNd = this.parseBSDate(breakEnd.replace(/-/g, '/'));
+                                if (segEndNd) {
+                                    const segEndAD = segEndNd.getDateObject();
+                                    beforeBreak = segEndAD.getTime() <= breakADMain.getTime();
+                                }
+                            }
+                        } catch { }
+                        splitSegments.push({ ...base, startDateBS: breakStart, endDateBS: breakEnd, years, months, days, totalNumDays, beforeBreak, remarks: br.remarks });
+                        current = breakEnd;
+                    }
+                    if (current >= segEnd) break;
+                }
+                if (current < segEnd) {
+                    let years = 0, months = 0, days = 0, totalNumDays = 0; let beforeBreak: boolean | undefined = undefined;
+                    try {
+                        const diff = await diffNepaliYMDWithTotalDays(current, segEnd);
+                        years = diff.years; months = diff.months; days = diff.days; totalNumDays = diff.totalNumDays;
+                        if (breakADMain) {
+                            const segEndNd = this.parseBSDate(segEnd.replace(/-/g, '/'));
+                            if (segEndNd) {
+                                const segEndAD = segEndNd.getDateObject();
+                                beforeBreak = segEndAD.getTime() <= breakADMain.getTime();
+                            }
+                        }
+                    } catch { }
+                    splitSegments.push({ ...base, startDateBS: current, endDateBS: segEnd, years, months, days, totalNumDays, beforeBreak });
+                }
+            }
+
+            flattened = splitSegments;
+        } catch { /* if splitting fails, keep original flattened */ }
 
         // Initialize presentDays with totalNumDays for each assignment
         for (const seg of flattened) {
-            seg.presentDays = seg.totalNumDays || 0;
+            if (seg.remarks) {
+                seg.presentDays = 0;
+            } else {
+                seg.presentDays = seg.totalNumDays || 0;
+            }
         }
 
         // Accumulate presentDays for consecutive same-category segments
@@ -398,6 +502,16 @@ export class EmployeeService {
             const presentDays: number = typeof seg.presentDays === 'number' ? seg.presentDays : 0;
 
             let marksYear = 0; // default fallback
+
+            // For absent/non-standard leave segments, force marks to 0
+            if (seg.remarks) {
+                seg.yearMarks = 0;
+                seg.monthMarks = 0;
+                seg.daysMarks = 0;
+                seg.marksYear = 0;
+                seg.totalMarks = 0;
+                continue;
+            }
 
             if (seg.beforeBreak) {
                 // Old system

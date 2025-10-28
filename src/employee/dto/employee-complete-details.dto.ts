@@ -4,6 +4,29 @@ import { AbsentDetailDto } from './absent-detail.dto';
 import { LeaveDetailDto } from './leave-detail.dto';
 import { RewardPunishmentDetailDto } from './reward-punishment-detail.dto';
 
+export class SenioritySegmentDto {
+    @ApiProperty({ description: 'Segment start date BS (x)' })
+    startDateBS: string;
+
+    @ApiProperty({ description: 'Segment end date BS (y)' })
+    endDateBS: string;
+
+    @ApiProperty({ description: 'Years in segment' })
+    years: number;
+
+    @ApiProperty({ description: 'Months in segment' })
+    months: number;
+
+    @ApiProperty({ description: 'Days in segment' })
+    days: number;
+
+    @ApiProperty({ description: 'Marks for this segment (0 for absent/non-standard leave range)' })
+    marks: number;
+
+    @ApiProperty({ required: false, description: 'Remarks for absent or non-standard leave segments' })
+    remarks?: string;
+}
+
 export class EmployeeCompleteDetailsDto {
     // Flattened from EmployeeBasicDetailsDto
     @ApiProperty()
@@ -27,22 +50,6 @@ export class EmployeeCompleteDetailsDto {
     @ApiProperty()
     group: string;
 
-    // Flattened from EmployeeSeniorityDataDto
-    @ApiProperty({ description: 'Seniority date in BS (YYYY-MM-DD)' })
-    seniorityDateBS: string;
-
-    @ApiProperty({ description: 'Provided end date in BS used for calculation (YYYY-MM-DD)', required: false })
-    endDateBS?: string;
-
-    @ApiProperty({ description: 'Years elapsed from seniorityDateBS to endDateBS/today' })
-    years: number;
-
-    @ApiProperty({ description: 'Months elapsed from seniorityDateBS to endDateBS/today' })
-    months: number;
-
-    @ApiProperty({ description: 'Days elapsed from seniorityDateBS to endDateBS/today' })
-    days: number;
-
     // Assignments array remains nested as items
     @ApiProperty({ type: [AssignmentWithExtrasDto] })
     assignments: AssignmentWithExtrasDto[];
@@ -55,6 +62,9 @@ export class EmployeeCompleteDetailsDto {
 
     @ApiProperty({ type: [RewardPunishmentDetailDto] })
     rewardsPunishments: RewardPunishmentDetailDto[];
+
+    @ApiProperty({ description: '2D array of seniority segments; rows represent continuous periods split by absences/non-standard leaves', isArray: true, type: () => SenioritySegmentDto })
+    seniorityDetails: SenioritySegmentDto[][];
 }
 
 

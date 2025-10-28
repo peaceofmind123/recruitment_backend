@@ -181,18 +181,91 @@ export class ApplicantService {
         ]);
 
         // Normalize absents/leaves/rewards BS dates and durations like employee endpoint
-        const ymdFromDurationDaysBS = (await import('../common/utils/nepali-date.utils')).ymdFromDurationDaysBS;
-        const normalizeList = async (items: any[]) => {
-            return Promise.all(items.map(async (it: any) => {
-                const durationDays = Math.max(0, parseInt(it.duration, 10) || 0);
-                const ymd = await ymdFromDurationDaysBS(durationDays);
-                return { ...it, years: ymd.years, months: ymd.months, days: ymd.days, totalNumDays: durationDays };
-            }));
-        };
+        const { ymdFromDurationDaysBS, diffNepaliYMD } = await import('../common/utils/nepali-date.utils');
+        const normAbsents = await Promise.all((absents as any[]).map(async a => {
+            let fromBS = await this.employeeService.normalizeBsDateValue(a.fromDateBS);
+            let toBS = await this.employeeService.normalizeBsDateValue(a.toDateBS);
+            const durationDays = Math.max(0, parseInt(a.duration, 10) || 0);
+            const { years, months, days } = await ymdFromDurationDaysBS(durationDays);
+            return { ...a, fromDateBS: fromBS, toDateBS: toBS, years, months, days, totalNumDays: durationDays };
+        }));
+        const normLeaves = await Promise.all((leaves as any[]).map(async l => {
+            let fromBS = await this.employeeService.normalizeBsDateValue(l.fromDateBS);
+            let toBS = await this.employeeService.normalizeBsDateValue(l.toDateBS);
+            const durationDays = Math.max(0, parseInt(l.duration, 10) || 0);
+            const { years, months, days } = await ymdFromDurationDaysBS(durationDays);
+            return { ...l, fromDateBS: fromBS, toDateBS: toBS, years, months, days, totalNumDays: durationDays };
+        }));
+        const normRps = await Promise.all((rewardsPunishments as any[]).map(async r => {
+            let fromBS = await this.employeeService.normalizeBsDateValue(r.fromDateBS);
+            let toBS = await this.employeeService.normalizeBsDateValue(r.toDateBS);
+            const durationDays = Math.max(0, parseInt(r.duration, 10) || 0);
+            const { years, months, days } = await ymdFromDurationDaysBS(durationDays);
+            return { ...r, fromDateBS: fromBS, toDateBS: toBS, years, months, days, totalNumDays: durationDays };
+        }));
 
-        const normAbsents = await normalizeList(absents as any[]);
-        const normLeaves = await normalizeList(leaves as any[]);
-        const normRps = await normalizeList(rewardsPunishments as any[]);
+        // Build seniorityDetails 2D segments by excluding absents and NON STANDARD leaves
+        const seniorityDetails = await (async () => {
+            const x = (seniority.seniorityDateBS || '').replace(/\//g, '-');
+            const y = (seniority.endDateBS || '').replace(/\//g, '-');
+            const segments: any[] = [];
+            const validRange = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d);
+            if (!validRange(x) || !validRange(y) || x > y) {
+                return [[]];
+            }
+            type BreakSeg = { start: string; end: string; remarks: string };
+            const breaks: BreakSeg[] = [];
+            for (const a of normAbsents as any[]) {
+                const s = (a.fromDateBS || '').replace(/\//g, '-');
+                const e = (a.toDateBS || '').replace(/\//g, '-');
+                if (validRange(s) && validRange(e)) {
+                    const start = s < x ? x : s;
+                    const end = e > y ? y : e;
+                    if (start < end) breaks.push({ start, end, remarks: 'absent' });
+                }
+            }
+            for (const l of normLeaves as any[]) {
+                if ((l.leaveType || '').toString().trim().toUpperCase() !== 'NON STANDARD') continue;
+                const s = (l.fromDateBS || '').replace(/\//g, '-');
+                const e = (l.toDateBS || '').replace(/\//g, '-');
+                if (validRange(s) && validRange(e)) {
+                    const start = s < x ? x : s;
+                    const end = e > y ? y : e;
+                    if (start < end) breaks.push({ start, end, remarks: 'non-standard leave' });
+                }
+            }
+            breaks.sort((b1, b2) => (b1.start < b2.start ? -1 : b1.start > b2.start ? 1 : (b1.end < b2.end ? -1 : b1.end > b2.end ? 1 : 0)));
+            let current = x;
+            for (const br of breaks) {
+                if (br.end <= current) continue;
+                const normalStart = current;
+                const normalEnd = br.start > y ? y : br.start;
+                if (normalStart < normalEnd) {
+                    const ymd = await diffNepaliYMD(normalStart, normalEnd);
+                    const marks = ymd.years * 3.75 + ymd.months * (3.75 / 12) + ymd.days * (3.75 / 365);
+                    segments.push({ startDateBS: normalStart, endDateBS: normalEnd, years: ymd.years, months: ymd.months, days: ymd.days, marks });
+                }
+                const breakStart = br.start < current ? current : br.start;
+                const breakEnd = br.end > y ? y : br.end;
+                if (breakStart < breakEnd) {
+                    const ymd = await diffNepaliYMD(breakStart, breakEnd);
+                    segments.push({ startDateBS: breakStart, endDateBS: breakEnd, years: ymd.years, months: ymd.months, days: ymd.days, marks: 0, remarks: br.remarks });
+                    current = breakEnd;
+                }
+                if (current >= y) break;
+            }
+            if (current < y) {
+                const ymd = await diffNepaliYMD(current, y);
+                const marks = ymd.years * 3.75 + ymd.months * (3.75 / 12) + ymd.days * (3.75 / 365);
+                segments.push({ startDateBS: current, endDateBS: y, years: ymd.years, months: ymd.months, days: ymd.days, marks });
+            }
+            if (segments.length === 0) {
+                const ymd = await diffNepaliYMD(x, y);
+                const marks = ymd.years * 3.75 + ymd.months * (3.75 / 12) + ymd.days * (3.75 / 365);
+                segments.push({ startDateBS: x, endDateBS: y, years: ymd.years, months: ymd.months, days: ymd.days, marks });
+            }
+            return [segments];
+        })();
 
         const response: ApplicantCompleteDetailsDto = {
             employeeId: details.employeeId,
@@ -202,15 +275,11 @@ export class ApplicantService {
             position: details.position,
             dob: details.dob,
             group: details.group,
-            seniorityDateBS: seniority.seniorityDateBS,
-            endDateBS: seniority.endDateBS,
-            years: seniority.years,
-            months: seniority.months,
-            days: seniority.days,
             assignments: assignments as any,
             absents: normAbsents as any,
             leaves: normLeaves as any,
             rewardsPunishments: normRps as any,
+            seniorityDetails,
             // Extras from vacancy
             service: applicant.vacancy.service,
             subgroup: applicant.vacancy.subGroup,

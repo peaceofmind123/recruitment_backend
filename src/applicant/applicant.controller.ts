@@ -118,6 +118,12 @@ export class ApplicantController {
         description: 'Bigyapan number of the vacancy',
         type: String
     })
+    @ApiQuery({
+        name: 'leaveType',
+        required: false,
+        description: 'Optional filter to include only leaves of a specific type',
+        type: String
+    })
     @ApiResponse({
         status: HttpStatus.OK,
         description: 'Returns applicant complete details identical to employee complete-details plus vacancy fields.',

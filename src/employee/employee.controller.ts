@@ -1,4 +1,4 @@
-import { Controller, Post, UploadedFile, UseInterceptors, Get, Query, Body, NotFoundException } from '@nestjs/common';
+import { Controller, Post, UploadedFile, UseInterceptors, Get, Query, Body, NotFoundException, Res } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiConsumes, ApiOperation, ApiTags, ApiBody, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { EmployeeService } from './employee.service';
@@ -11,11 +11,16 @@ import { AssignmentDetail } from './entities/assignment-detail.entity';
 import { AssignmentWithExtrasDto } from './dto/assignment-with-extras.dto';
 import { EmployeeCompleteDetailsDto } from './dto/employee-complete-details.dto';
 import { ymdFromDurationDaysBS, formatBS } from '../common/utils/nepali-date.utils';
+import { TemplateRendererService } from '../common/template-renderer.service';
+import { Response } from 'express';
 
 @ApiTags('Employee')
 @Controller('employee')
 export class EmployeeController {
-    constructor(private readonly employeeService: EmployeeService) { }
+    constructor(
+        private readonly employeeService: EmployeeService,
+        private readonly templateRenderer: TemplateRendererService,
+    ) { }
 
     @Get('service-detail')
     @ApiOperation({ summary: 'Get all employees with their qualifications' })
@@ -410,5 +415,58 @@ export class EmployeeController {
             rewardsPunishments: normRps as any,
             seniorityDetails
         };
+    }
+
+    @Get('report/html')
+    @ApiOperation({ summary: 'Render employee report as HTML (templated)' })
+    @ApiQuery({ name: 'employeeId', type: Number, required: true })
+    @ApiQuery({ name: 'startLevel', type: Number, required: false })
+    @ApiQuery({ name: 'endLevel', type: Number, required: false })
+    @ApiQuery({ name: 'defaultEndDateBS', type: String, required: false })
+    @ApiQuery({ name: 'endDateBS', type: String, required: false })
+    @ApiQuery({ name: 'leaveType', type: String, required: false })
+    async renderEmployeeReportHtml(
+        @Query('employeeId') employeeId: string,
+        @Query('startLevel') startLevel?: string,
+        @Query('endLevel') endLevel?: string,
+        @Query('defaultEndDateBS') defaultEndDateBS?: string,
+        @Query('endDateBS') endDateBS?: string,
+        @Query('leaveType') leaveType?: string,
+        @Res() res?: Response,
+    ) {
+        const id = parseInt(employeeId, 10);
+        if (isNaN(id)) {
+            throw new NotFoundException('Invalid employeeId');
+        }
+
+        // Reuse existing aggregation
+        const details = await this.getEmployeeCompleteDetails(employeeId, startLevel, endLevel, defaultEndDateBS, endDateBS, leaveType);
+
+        // Augment with education from base entity
+        const base = await this.employeeService.getEmployeeById(id);
+        const employee = {
+            employeeId: details.employeeId,
+            name: details.name,
+            level: details.level,
+            workingOffice: details.workingOffice,
+            position: details.position,
+            dob: details.dob,
+            group: details.group,
+            education: base?.education || '',
+        } as any;
+
+        const html = this.templateRenderer.render('employee-report', {
+            employee,
+            seniorityDetails: details.seniorityDetails,
+            absents: details.absents,
+            leaves: details.leaves,
+            assignments: details.assignments,
+        });
+
+        if (res) {
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            return res.send(html);
+        }
+        return html;
     }
 } 

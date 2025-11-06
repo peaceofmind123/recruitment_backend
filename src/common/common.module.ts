@@ -7,6 +7,7 @@ import { Office } from './entities/office.entity';
 import { CategoryMarks } from './entities/category-marks.entity';
 import { DistrictDataService } from './district-data.service';
 import { DistrictDataController } from './district-data.controller';
+import { TemplateRendererService } from './template-renderer.service';
 import { UtilsController } from './utils.controller';
 
 @Module({
@@ -14,9 +15,9 @@ import { UtilsController } from './utils.controller';
         ConfigModule,
         TypeOrmModule.forFeature([District, Office, CategoryMarks]),
     ],
-    providers: [LoggerMiddleware, DistrictDataService],
+    providers: [LoggerMiddleware, DistrictDataService, TemplateRendererService],
     controllers: [DistrictDataController, UtilsController],
-    exports: [LoggerMiddleware, TypeOrmModule],
+    exports: [LoggerMiddleware, TypeOrmModule, TemplateRendererService],
 })
 export class CommonModule implements NestModule {
     configure(consumer: MiddlewareConsumer) {

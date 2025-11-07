@@ -441,7 +441,9 @@ export class EmployeeController {
 
         // Reuse existing aggregation
         const details = await this.getEmployeeCompleteDetails(employeeId, startLevel, endLevel, defaultEndDateBS, endDateBS, leaveType);
-
+        
+        // add additional arguments to seniority details
+        
         // Augment with education from base entity
         const base = await this.employeeService.getEmployeeById(id);
         const employee = {
@@ -461,6 +463,7 @@ export class EmployeeController {
             absents: details.absents,
             leaves: details.leaves,
             assignments: details.assignments,
+            endDateBS
         });
 
         if (res) {

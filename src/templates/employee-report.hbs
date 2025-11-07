@@ -1,182 +1,375 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Employee Report</title>
-    <style>
-      body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #222; }
-      h2 { margin: 12px 0 6px; font-size: 16px; }
-      h3 { margin: 10px 0 4px; font-size: 14px; }
-      table { border-collapse: collapse; width: 100%; margin: 6px 0 14px; }
-      th, td { border: 1px solid #888; padding: 4px 6px; text-align: left; }
-      th { background: #f2f2f2; }
-      .muted { color: #666; }
-      .section { margin-bottom: 14px; }
-    </style>
-  </head>
-  <body>
-    <h2>Employee Report</h2>
 
-    <div class="section">
-      <h3>Employee Details</h3>
-      <table>
-        <tbody>
-          <tr><th>Employee ID</th><td>{{employee.employeeId}}</td><th>Name</th><td>{{employee.name}}</td></tr>
-          <tr><th>Level</th><td>{{employee.level}}</td><th>Group</th><td>{{employee.group}}</td></tr>
-          <tr><th>Position</th><td>{{employee.position}}</td><th>Working Office</th><td>{{employee.workingOffice}}</td></tr>
-          <tr><th>Date of Birth</th><td>{{employee.dob}}</td><th>Education</th><td>{{employee.education}}</td></tr>
-        </tbody>
-      </table>
-    </div>
+<head>
+  <meta charset="utf-8" />
+  <title>Employee Report</title>
+  <style>
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 24px 0;
+      font-size: 16px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.05);
+      background: #fff;
+    }
 
-    <div class="section">
-      <h3>Seniority Details</h3>
+    th,
+    td {
+      padding: 12px 18px;
+      border: 1px solid #dee2e6;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    tr:first-child td,
+    tr:first-child th {
+      border-top: 2px solid #155fa0;
+    }
+
+    tr:last-child td,
+    tr:last-child th {
+      border-bottom: 2px solid #155fa0;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+
+    th {
+      background-color: #155fa0;
+      color: #fff;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+
+    td[colspan] {
+      font-weight: 500;
+      background: #e5f0fb;
+      color: #12395b;
+      text-align: center;
+      font-size: 18px;
+    }
+
+    body {
+      font-family: 'Segoe UI', 'Tahoma', 'Geneva', 'Verdana', sans-serif;
+      color: #22223b;
+      background: #f4f6fa;
+      margin: 0;
+      padding: 0;
+    }
+
+    @media (max-width: 768px) {
+
+      table,
+      th,
+      td {
+        font-size: 14px;
+        padding: 8px 6px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <table>
+    <tbody>
+      <tr>
+        <td colspan="15">
+          नेपाल टेलिकम
+        </td>
+      </tr>
+      <tr>
+        <td colspan="15">
+          पदपूर्ति सचिवालय
+        </td>
+      </tr>
+      <tr>
+        <td colspan="15">
+          जेष्ठता, भौगोलिक क्षेत्र, शैक्षिक योग्यता र तालिम वापतको अंक गणना तालिका
+        </td>
+      </tr>
+      <tr>
+        <td>कर्मचारी नम्बर</td>
+        <td>{{employee.employeeId}}</td>
+        <td colspan="13">&nbsp;</td>
+      </tr>
+      <tr>
+        <td>कर्मचारीको नाम</td>
+        <td>{{employee.name}}</td>
+        <td colspan="13"></td>
+      </tr>
+
+      <tr>
+        <td>हालको पद र तह</td>
+        <td>{{employee.position}}, {{employee.level}}</td>
+        <td colspan="13"></td>
+      </tr>
+
+      <tr>
+        <td>सेवा,समूह,उपसमूह</td>
+        <td>{{employee.group}}</td>
+        <td>जन्म मिति (बि. स.)</td>
+        <td>{{employee.dob}}</td>
+      </tr>
+      <tr>
+        <td>स्थायी ठेगाना</td>
+        <td colspan="14"></td>
+      </tr>
+      <tr>
+        <td colspan="7">अंक गणनाको अवधि :</td>
+        <td colspan="8">बि.सं. {{endDateBS}} सम्म |</td>
+      </tr>
+      <tr>
+        <td colspan="3">१. जेष्ठता विवरण</td>
+        <td colspan="5">हालको पदको नोकरी विवरण
+        </td>
+        <td rowspan="3">वार्षिक अंकदर</td>
+        <td rowspan="3">वार्षिक अंक</td>
+        <td rowspan="3">मासिक अंक</td>
+        <td rowspan="3">दैनिक अंक</td>
+        <td rowspan="3">प्राप्तांक</td>
+        <td rowspan="3">कुल प्राप्तांक</td>
+        <td rowspan="3">कैफियत</td>
+      </tr>
+      <tr>
+        <td colspan="3" rowspan="2">बहाल रहेको कार्यालय</td>
+        <td colspan="2">अस्थायी/स्थायी सेवा अवधि
+        </td>
+        <td rowspan="2">बर्ष</td>
+        <td rowspan="2">महिना</td>
+        <td rowspan="2">दिन</td>
+      </tr>
+      <tr>
+        <td>देखि</td>
+        <td>सम्म</td>
+      </tr>
       {{#if seniorityDetails}}
-        <table>
-          <thead>
-            <tr>
-              <th>Start (BS)</th>
-              <th>End (BS)</th>
-              <th>Years</th>
-              <th>Months</th>
-              <th>Days</th>
-              <th>Marks</th>
-              <th>Remarks</th>
-            </tr>
-          </thead>
-          <tbody>
-            {{#each seniorityDetails}}
-              {{#each this}}
-                <tr>
-                  <td>{{startDateBS}}</td>
-                  <td>{{endDateBS}}</td>
-                  <td>{{years}}</td>
-                  <td>{{months}}</td>
-                  <td>{{days}}</td>
-                  <td>{{marks}}</td>
-                  <td>{{remarks}}</td>
-                </tr>
-              {{/each}}
-            {{/each}}
-          </tbody>
-        </table>
-      {{else}}
-        <div class="muted">No seniority details available.</div>
+      {{#each seniorityDetails}}
+      {{#each this}}
+      <tr>
+        <td colspan="3">{{../../employee.workingOffice}}</td>
+        <td>{{startDateBS}}</td>
+        <td>{{endDateBS}}</td>
+        <td>{{years}}</td>
+        <td>{{months}}</td>
+        <td>{{days}}</td>
+        <td>3.75</td>
+        <td>{{multiply 3.75 years}}</td>
+        <td>{{multiply 0.3125 months}}</td>
+        <td>{{multiply 0.01027 days}}</td>
+        <td>{{toFixed marks 2}}</td>
+        <td>{{toFixed marks 2}}</td>
+        <td>{{remarks}}</td>
+      </tr>
+      {{/each}}
+      {{/each}}
       {{/if}}
-    </div>
-
-    <div class="section">
-      <h3>Absent Details</h3>
-      {{#if absents}}
-        <table>
-          <thead>
-            <tr>
-              <th>From (BS)</th>
-              <th>To (BS)</th>
-              <th>Duration (days)</th>
-              <th>Remarks</th>
-            </tr>
-          </thead>
-          <tbody>
-            {{#each absents}}
-              <tr>
-                <td>{{fromDateBS}}</td>
-                <td>{{toDateBS}}</td>
-                <td>{{duration}}</td>
-                <td>{{remarks}}</td>
-              </tr>
-            {{/each}}
-          </tbody>
-        </table>
-      {{else}}
-        <div class="muted">No absent records.</div>
-      {{/if}}
-    </div>
-
-    <div class="section">
-      <h3>Leave Details</h3>
-      {{#if leaves}}
-        <table>
-          <thead>
-            <tr>
-              <th>From (BS)</th>
-              <th>To (BS)</th>
-              <th>Type</th>
-              <th>Duration (days)</th>
-              <th>Remarks</th>
-            </tr>
-          </thead>
-          <tbody>
-            {{#each leaves}}
-              <tr>
-                <td>{{fromDateBS}}</td>
-                <td>{{toDateBS}}</td>
-                <td>{{leaveType}}</td>
-                <td>{{duration}}</td>
-                <td>{{remarks}}</td>
-              </tr>
-            {{/each}}
-          </tbody>
-        </table>
-      {{else}}
-        <div class="muted">No leave records.</div>
-      {{/if}}
-    </div>
-
-    <div class="section">
-      <h3>Geographical Details (Assignments)</h3>
-      {{#if assignments}}
-        <table>
-          <thead>
-            <tr>
-              <th>Work Office</th>
-              <th>District</th>
-              <th>Category</th>
-              <th>Start (BS)</th>
-              <th>End (BS)</th>
-              <th>Years</th>
-              <th>Months</th>
-              <th>Days</th>
-              <th>Present Days</th>
-              <th>Marks/Year</th>
-              <th>Total Marks</th>
-            </tr>
-          </thead>
-          <tbody>
-            {{#each assignments}}
-              <tr>
-                <td>{{workOffice}}</td>
-                <td>{{district}}</td>
-                <td>{{category}}</td>
-                <td>{{startDateBS}}</td>
-                <td>{{endDateBS}}</td>
-                <td>{{years}}</td>
-                <td>{{months}}</td>
-                <td>{{days}}</td>
-                <td>{{presentDays}}</td>
-                <td>{{marksYear}}</td>
-                <td>{{totalMarks}}</td>
-              </tr>
-            {{/each}}
-          </tbody>
-        </table>
-      {{else}}
-        <div class="muted">No assignment records.</div>
-      {{/if}}
-    </div>
-
-    <div class="section">
-      <h3>Education Details</h3>
-      <table>
-        <tbody>
-          <tr>
-            <th>Education</th>
-            <td>{{employee.education}}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </body>
-  </html>
+    </tbody>
+  </table>
+  <div>
+    <table>
+      <tbody>
+        <tr>
+          <td>कर्मचारी नम्बर</td>
+          <td>{{employee.employeeId}}</td>
+        <tr>
+          <td>कर्मचारीको नाम</td>
+          <td>{{employee.name}}</td>
+        <tr>
+          <td>हालको पद र तह</td>
+          <td>{{employee.position}} ({{employee.level}})</td>
+        </tr>
+        <tr>
+          <td>सेवा, समूह र उपसमूह</td>
+          <td>{{employee.service}}, {{employee.group}}, {{employee.subgroup}}</td>
+          <td>जन्म मिति</td>
+          <td>{{employee.dob}}</td>
+        </tr>
 
 
+      </tbody>
+    </table>
+  </div>
+  <div class="section">
+    <h3>Employee Details</h3>
+    <table>
+      <tbody>
+        <tr>
+          <th>Employee ID</th>
+          <td>{{employee.employeeId}}</td>
+          <th>Name</th>
+          <td>{{employee.name}}</td>
+        </tr>
+        <tr>
+          <th>Level</th>
+          <td>{{employee.level}}</td>
+          <th>Group</th>
+          <td>{{employee.group}}</td>
+        </tr>
+        <tr>
+          <th>Position</th>
+          <td>{{employee.position}}</td>
+          <th>Working Office</th>
+          <td>{{employee.workingOffice}}</td>
+        </tr>
+        <tr>
+          <th>Date of Birth</th>
+          <td>{{employee.dob}}</td>
+          <th>Education</th>
+          <td>{{employee.education}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h3>Seniority Details</h3>
+    {{#if seniorityDetails}}
+    <table>
+      <thead>
+        <tr>
+          <th>Start (BS)</th>
+          <th>End (BS)</th>
+          <th>Years</th>
+          <th>Months</th>
+          <th>Days</th>
+          <th>Marks</th>
+          <th>Remarks</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each seniorityDetails}}
+        {{#each this}}
+        <tr>
+          <td>{{startDateBS}}</td>
+          <td>{{endDateBS}}</td>
+          <td>{{years}}</td>
+          <td>{{months}}</td>
+          <td>{{days}}</td>
+          <td>{{marks}}</td>
+          <td>{{remarks}}</td>
+        </tr>
+        {{/each}}
+        {{/each}}
+      </tbody>
+    </table>
+    {{else}}
+    <div class="muted">No seniority details available.</div>
+    {{/if}}
+  </div>
+
+  <div class="section">
+    <h3>Absent Details</h3>
+    {{#if absents}}
+    <table>
+      <thead>
+        <tr>
+          <th>From (BS)</th>
+          <th>To (BS)</th>
+          <th>Duration (days)</th>
+          <th>Remarks</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each absents}}
+        <tr>
+          <td>{{fromDateBS}}</td>
+          <td>{{toDateBS}}</td>
+          <td>{{duration}}</td>
+          <td>{{remarks}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+    {{else}}
+    <div class="muted">No absent records.</div>
+    {{/if}}
+  </div>
+
+  <div class="section">
+    <h3>Leave Details</h3>
+    {{#if leaves}}
+    <table>
+      <thead>
+        <tr>
+          <th>From (BS)</th>
+          <th>To (BS)</th>
+          <th>Type</th>
+          <th>Duration (days)</th>
+          <th>Remarks</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each leaves}}
+        <tr>
+          <td>{{fromDateBS}}</td>
+          <td>{{toDateBS}}</td>
+          <td>{{leaveType}}</td>
+          <td>{{duration}}</td>
+          <td>{{remarks}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+    {{else}}
+    <div class="muted">No leave records.</div>
+    {{/if}}
+  </div>
+
+  <div class="section">
+    <h3>Geographical Details (Assignments)</h3>
+    {{#if assignments}}
+    <table>
+      <thead>
+        <tr>
+          <th>Work Office</th>
+          <th>District</th>
+          <th>Category</th>
+          <th>Start (BS)</th>
+          <th>End (BS)</th>
+          <th>Years</th>
+          <th>Months</th>
+          <th>Days</th>
+          <th>Present Days</th>
+          <th>Marks/Year</th>
+          <th>Total Marks</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each assignments}}
+        <tr>
+          <td>{{workOffice}}</td>
+          <td>{{district}}</td>
+          <td>{{category}}</td>
+          <td>{{startDateBS}}</td>
+          <td>{{endDateBS}}</td>
+          <td>{{years}}</td>
+          <td>{{months}}</td>
+          <td>{{days}}</td>
+          <td>{{presentDays}}</td>
+          <td>{{marksYear}}</td>
+          <td>{{totalMarks}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+    {{else}}
+    <div class="muted">No assignment records.</div>
+    {{/if}}
+  </div>
+
+  <div class="section">
+    <h3>Education Details</h3>
+    <table>
+      <tbody>
+        <tr>
+          <th>Education</th>
+          <td>{{employee.education}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+
+</html>

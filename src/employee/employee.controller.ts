@@ -2,6 +2,7 @@ import { Controller, Post, UploadedFile, UseInterceptors, Get, Query, Body, NotF
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiConsumes, ApiOperation, ApiTags, ApiBody, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { EmployeeService } from './employee.service';
+import { Sex } from './entities/employee.entity';
 import { FilterByEmployeeIdDto } from './dto/filter-by-employee-id.dto';
 import { EmployeeDetailDto } from './dto/employee-detail.dto';
 import { EmployeeDetailResponseDto, EmployeeServiceDetailResponseDto } from './dto/employee-detail-response.dto';
@@ -441,11 +442,12 @@ export class EmployeeController {
 
         // Reuse existing aggregation
         const details = await this.getEmployeeCompleteDetails(employeeId, startLevel, endLevel, defaultEndDateBS, endDateBS, leaveType);
-        
+
         // add additional arguments to seniority details
-        
+
         // Augment with education from base entity
         const base = await this.employeeService.getEmployeeById(id);
+        const gender = base?.sex === Sex.M ? 'M' : (base?.sex === Sex.F ? 'F' : '');
         const employee = {
             employeeId: details.employeeId,
             name: details.name,
@@ -455,7 +457,27 @@ export class EmployeeController {
             dob: details.dob,
             group: details.group,
             education: base?.education || '',
+            gender
         } as any;
+
+        // Compute totals for report consumption
+        const seniorityTotalMarks =
+            Array.isArray(details.seniorityDetails)
+                ? (details.seniorityDetails as any[]).flat().reduce((sum, seg: any) => {
+                    const v = typeof seg?.marks === 'number' ? seg.marks : Number(seg?.marks) || 0;
+                    return sum + v;
+                }, 0)
+                : 0;
+
+        const geographicalTotalMarks =
+            Array.isArray(details.assignments)
+                ? (details.assignments as any[]).reduce((sum, seg: any) => {
+                    const v = typeof seg?.totalMarks === 'number' ? seg.totalMarks : Number(seg?.totalMarks) || 0;
+                    return sum + v;
+                }, 0)
+                : 0;
+
+        const combinedTotalMarks = seniorityTotalMarks + geographicalTotalMarks;
 
         const html = this.templateRenderer.render('employee-report', {
             employee,
@@ -463,6 +485,9 @@ export class EmployeeController {
             absents: details.absents,
             leaves: details.leaves,
             assignments: details.assignments,
+            seniorityTotalMarks,
+            geographicalTotalMarks,
+            combinedTotalMarks,
             endDateBS
         });
 

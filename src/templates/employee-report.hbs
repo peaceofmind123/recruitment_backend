@@ -10,43 +10,27 @@
       border-collapse: collapse;
       margin: 24px 0;
       font-size: 16px;
-      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.05);
       background: #fff;
     }
 
     th,
     td {
       padding: 12px 18px;
-      border: 1px solid #dee2e6;
+      border: 1px solid #000;
       text-align: left;
       vertical-align: middle;
     }
 
-    tr:first-child td,
-    tr:first-child th {
-      border-top: 2px solid #155fa0;
-    }
-
-    tr:last-child td,
-    tr:last-child th {
-      border-bottom: 2px solid #155fa0;
-    }
-
-    tr:nth-child(even) {
-      background-color: #f8fafc;
-    }
-
     th {
-      background-color: #155fa0;
-      color: #fff;
+      background-color: #f2f2f2;
+      color: #000;
       font-weight: 600;
-      letter-spacing: 0.03em;
     }
 
     td[colspan] {
-      font-weight: 500;
-      background: #e5f0fb;
-      color: #12395b;
+      font-weight: 600;
+      background: #fff;
+      color: inherit;
       text-align: center;
       font-size: 18px;
     }
@@ -57,6 +41,10 @@
       background: #f4f6fa;
       margin: 0;
       padding: 0;
+    }
+
+    .container {
+      padding: 1.5rem;
     }
 
     @media (max-width: 768px) {
@@ -72,101 +60,294 @@
 </head>
 
 <body>
-  <table>
-    <tbody>
-      <tr>
-        <td colspan="15">
-          नेपाल टेलिकम
-        </td>
-      </tr>
-      <tr>
-        <td colspan="15">
-          पदपूर्ति सचिवालय
-        </td>
-      </tr>
-      <tr>
-        <td colspan="15">
-          जेष्ठता, भौगोलिक क्षेत्र, शैक्षिक योग्यता र तालिम वापतको अंक गणना तालिका
-        </td>
-      </tr>
-      <tr>
-        <td>कर्मचारी नम्बर</td>
-        <td>{{employee.employeeId}}</td>
-        <td colspan="13">&nbsp;</td>
-      </tr>
-      <tr>
-        <td>कर्मचारीको नाम</td>
-        <td>{{employee.name}}</td>
-        <td colspan="13"></td>
-      </tr>
+  <div class="container">
+    <table>
+      <tbody>
+        <tr>
+          <td colspan="15">
+            नेपाल टेलिकम
+          </td>
+        </tr>
+        <tr>
+          <td colspan="15">
+            पदपूर्ति सचिवालय
+          </td>
+        </tr>
+        <tr>
+          <td colspan="15">
+            जेष्ठता, भौगोलिक क्षेत्र, शैक्षिक योग्यता र तालिम वापतको अंक गणना तालिका
+          </td>
+        </tr>
+        <tr>
+          <td>कर्मचारी नम्बर</td>
+          <td>{{employee.employeeId}}</td>
+          <td colspan="13">&nbsp;</td>
+        </tr>
+        <tr>
+          <td>कर्मचारीको नाम</td>
+          <td>{{employee.name}}</td>
+          <td colspan="13"></td>
+        </tr>
 
-      <tr>
-        <td>हालको पद र तह</td>
-        <td>{{employee.position}}, {{employee.level}}</td>
-        <td colspan="13"></td>
-      </tr>
+        <tr>
+          <td>हालको पद र तह</td>
+          <td>{{employee.position}}, {{employee.level}}</td>
+          <td colspan="13"></td>
+        </tr>
 
-      <tr>
-        <td>सेवा,समूह,उपसमूह</td>
-        <td>{{employee.group}}</td>
-        <td>जन्म मिति (बि. स.)</td>
-        <td>{{employee.dob}}</td>
-      </tr>
-      <tr>
-        <td>स्थायी ठेगाना</td>
-        <td colspan="14"></td>
-      </tr>
-      <tr>
-        <td colspan="7">अंक गणनाको अवधि :</td>
-        <td colspan="8">बि.सं. {{endDateBS}} सम्म |</td>
-      </tr>
-      <tr>
-        <td colspan="3">१. जेष्ठता विवरण</td>
-        <td colspan="5">हालको पदको नोकरी विवरण
-        </td>
-        <td rowspan="3">वार्षिक अंकदर</td>
-        <td rowspan="3">वार्षिक अंक</td>
-        <td rowspan="3">मासिक अंक</td>
-        <td rowspan="3">दैनिक अंक</td>
-        <td rowspan="3">प्राप्तांक</td>
-        <td rowspan="3">कुल प्राप्तांक</td>
-        <td rowspan="3">कैफियत</td>
-      </tr>
-      <tr>
-        <td colspan="3" rowspan="2">बहाल रहेको कार्यालय</td>
-        <td colspan="2">अस्थायी/स्थायी सेवा अवधि
-        </td>
-        <td rowspan="2">बर्ष</td>
-        <td rowspan="2">महिना</td>
-        <td rowspan="2">दिन</td>
-      </tr>
-      <tr>
-        <td>देखि</td>
-        <td>सम्म</td>
-      </tr>
-      {{#if seniorityDetails}}
-      {{#each seniorityDetails}}
-      {{#each this}}
-      <tr>
-        <td colspan="3">{{../../employee.workingOffice}}</td>
-        <td>{{startDateBS}}</td>
-        <td>{{endDateBS}}</td>
-        <td>{{years}}</td>
-        <td>{{months}}</td>
-        <td>{{days}}</td>
-        <td>3.75</td>
-        <td>{{multiply 3.75 years}}</td>
-        <td>{{multiply 0.3125 months}}</td>
-        <td>{{multiply 0.01027 days}}</td>
-        <td>{{toFixed marks 2}}</td>
-        <td>{{toFixed marks 2}}</td>
-        <td>{{remarks}}</td>
-      </tr>
-      {{/each}}
-      {{/each}}
-      {{/if}}
-    </tbody>
-  </table>
+        <tr>
+          <td>सेवा,समूह,उपसमूह</td>
+          <td>{{employee.group}}</td>
+          <td colspan="2">जन्म मिति (बि. स.)</td>
+          <td>{{employee.dob}}</td>
+          <td colspan="10"></td>
+        </tr>
+        <tr>
+          <td>स्थायी ठेगाना</td>
+          <td colspan="14"></td>
+        </tr>
+        <tr>
+          <td colspan="8">अंक गणनाको अवधि :</td>
+          <td colspan="7">बि.सं. {{endDateBS}} सम्म |</td>
+        </tr>
+        <tr>
+          <td colspan="3">१. जेष्ठता विवरण</td>
+          <td colspan="5">हालको पदको नोकरी विवरण
+          </td>
+          <td rowspan="3">वार्षिक अंकदर</td>
+          <td rowspan="3">वार्षिक अंक</td>
+          <td rowspan="3">मासिक अंक</td>
+          <td rowspan="3">दैनिक अंक</td>
+          <td rowspan="3">प्राप्तांक</td>
+          <td rowspan="3">कुल प्राप्तांक</td>
+          <td rowspan="3">कैफियत</td>
+        </tr>
+        <tr>
+          <td colspan="3" rowspan="2">बहाल रहेको कार्यालय</td>
+          <td colspan="2">अस्थायी/स्थायी सेवा अवधि
+          </td>
+          <td rowspan="2">बर्ष</td>
+          <td rowspan="2">महिना</td>
+          <td rowspan="2">दिन</td>
+        </tr>
+        <tr>
+          <td>देखि</td>
+          <td>सम्म</td>
+        </tr>
+        {{#if seniorityDetails}}
+        {{#each seniorityDetails}}
+        {{#each this}}
+        <tr>
+          <td colspan="3">{{../../employee.workingOffice}}</td>
+          <td>{{startDateBS}}</td>
+          <td>{{endDateBS}}</td>
+          <td>{{years}}</td>
+          <td>{{months}}</td>
+          <td>{{days}}</td>
+          <td>3.75</td>
+          <td>{{multiply 3.75 years}}</td>
+          <td>{{multiply 0.3125 months}}</td>
+          <td>{{multiply 0.01027 days}}</td>
+          <td>{{toFixed marks 2}}</td>
+          <td>{{toFixed marks 2}}</td>
+          <td>{{remarks}}</td>
+        </tr>
+        {{/each}}
+        {{/each}}
+        {{/if}}
+        <tr>
+          <td colspan="13">जम्मा अंक</td>
+          <td colspan="2">{{toFixed seniorityTotalMarks 4}}</td>
+        </tr>
+        <tr>
+          <td colspan="15"></td>
+        </tr>
+        <tr>
+          <td colspan="3">
+            असाधारण बिदा / गयल कट्टी (भएमा)
+          </td>
+          <td>देखि</td>
+          <td>सम्म</td>
+          <td>वर्ष</td>
+          <td>महिना</td>
+          <td>दिन</td>
+          <td colspan="7">कैफियत</td>
+        </tr>
+        {{#if absents}}
+        {{#each absents}}
+        <tr>
+          <td colspan="3">Absent</td>
+          <td>{{fromDateBS}}</td>
+          <td>{{toDateBS}}</td>
+          <td>{{years}}</td>
+          <td>{{months}}</td>
+          <td>{{days}}</td>
+          <td colspan="7">{{remarks}}</td>
+        </tr>
+        {{/each}}
+        {{/if}}
+        {{#if leaves}}
+        {{#each leaves}}
+        <tr>
+          <td colspan="3">{{leaveType}} LEAVE</td>
+          <td>{{fromDateBS}}</td>
+          <td>{{toDateBS}}</td>
+          <td>{{years}}</td>
+          <td>{{months}}</td>
+          <td>{{days}}</td>
+          <td colspan="7">{{remarks}}</td>
+        </tr>
+        {{/each}}
+        {{/if}}
+        <tr>
+          <td colspan="15"></td>
+        </tr>
+        <tr>
+          <td>भौगोलिक क्षेत्रमा काम गरेको जिल्ला</td>
+          <td>वर्ग</td>
+          <td>लिङ्ग (M/F)</td>
+          <td colspan="5">रुजु हाजिर भएको अवधि (अध्ययन, असाधारण बिदा लिएको अवधि बाहेक)</td>
+          <td rowspan="2">वार्षिक अंकदर</td>
+          <td rowspan="2">वार्षिक अंक</td>
+          <td rowspan="2">मासिक अंक</td>
+          <td rowspan="2">दैनिक अंक</td>
+          <td rowspan="2">प्राप्तांक</td>
+          <td rowspan="2">कूल प्राप्तांक</td>
+          <td rowspan="2">कैफियत</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td>देखि</td>
+          <td>सम्म</td>
+          <td>वर्ष</td>
+          <td>महिना</td>
+          <td>दिन</td>
+        </tr>
+        {{#if assignments}}
+        {{#each assignments}}
+        <tr>
+          <td>{{district}}</td>
+          <td>{{category}}</td>
+          <td>{{../employee.gender}}</td>
+          <td>{{startDateBS}}</td>
+          <td>{{endDateBS}}</td>
+          <td>{{years}}</td>
+          <td>{{months}}</td>
+          <td>{{days}}</td>
+          <td>3.75</td>
+          <td>{{toFixed yearMarks 2}}</td>
+          <td>{{toFixed monthMarks 2}}</td>
+          <td>{{toFixed daysMarks 2}}</td>
+          <td>{{toFixed totalMarks 2}}</td>
+          <td>{{toFixed totalMarks 2}}</td>
+          <td>{{remarks}}</td>
+        </tr>
+        {{/each}}
+        {{/if}}
+        <tr>
+          <td colspan="13">जम्मा अंक</td>
+          <td colspan="2">{{toFixed geographicalTotalMarks 4}}</td>
+        </tr>
+        <tr>
+          <td colspan="15"></td>
+        </tr>
+        <tr>
+          <td colspan="6">३. शैक्षिक योग्यताको विवरण</td>
+          <td colspan="5">उपाधिको नाम</td>
+          <td></td>
+          <td>प्राप्तांक</td>
+          <td>कूल प्राप्तांक</td>
+          <td>कैफियत</td>
+        </tr>
+        <tr>
+          <td colspan="6">कार्यालयको रेकर्डबाट देखिएको शैक्षिक योग्यता</td>
+          <td colspan="5">{{employee.education}}</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td colspan="6">तोकिएको न्युनतम शैक्षिक योग्यता</td>
+          <td colspan="5"></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td colspan="6">न्युनतम शैक्षिक योगता भन्दा माथिको सम्वन्धित विषयको एक शैक्षिक उपाधि</td>
+          <td colspan="5"></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td colspan="15"></td>
+        </tr>
+        <tr>
+          <td colspan="6">४. तालिमको विवरण</td>
+          <td colspan="5">उपाधिको नाम</td>
+          <td></td>
+          <td>प्राप्तांक</td>
+          <td>कूल प्राप्तांक</td>
+          <td>कैफियत</td>
+        </tr>
+        <tr>
+          <td colspan="15"></td>
+        </tr>
+        <tr>
+          <td>प्राप्तांक:</td>
+          <td colspan="14"></td>
+        </tr>
+        <tr>
+          <td colspan="4">१. जेष्ठता प्राप्तांक:</td>
+          <td>{{toFixed seniorityTotalMarks 4}}</td>
+        </tr>
+        <tr>
+          <td colspan="4">२. भौगोलिक क्षेत्रको प्राप्तांक:</td>
+          <td>{{toFixed geographicalTotalMarks 4}}</td>
+          <td></td>
+          <td>तयार गर्ने: </td>
+          <td colspan="3"></td>
+          <td>रुजु गर्ने:</td>
+          <td colspan="2"></td>
+          <td>प्रमाणित गर्ने:</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td colspan="4">३. शैक्षिक योग्यता बापतको अंक:</td>
+          <td></td>
+          <td></td>
+          <td>नाम</td>
+          <td colspan="3"></td>
+          <td>नाम</td>
+          <td colspan="2"></td>
+          <td>नाम</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td colspan="4">४. तालिम बापतको अंक:</td>
+          <td>0.0000</td>
+          <td></td>
+          <td>दस्तखत</td>
+          <td colspan="3"></td>
+          <td>दस्तखत</td>
+          <td colspan="2"></td>
+          <td>दस्तखत</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td colspan="4">जम्मा अंक</td>
+          <td>{{toFixed combinedTotalMarks 4}}</td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div>
   <div>
     <table>
       <tbody>
@@ -219,6 +400,7 @@
           <th>Education</th>
           <td>{{employee.education}}</td>
         </tr>
+
       </tbody>
     </table>
   </div>

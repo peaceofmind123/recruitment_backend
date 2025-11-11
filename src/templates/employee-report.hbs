@@ -5,7 +5,7 @@
   <script type="text/javascript">
     var tableToExcel = (function () {
       var uri = 'data:application/vnd.ms-excel;base64,'
-        , template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name><x:WorksheetOptions><x:DoNotDisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--><meta http-equiv="content-type" content="text/plain; charset=UTF-8"/><style>table{width:100%;border-collapse:collapse;margin:24px 0;font-size:16px;background:#fff}th,td{padding:12px 18px;text-align:left;vertical-align:middle}th{background-color:#f2f2f2;color:#000;font-weight:600}.no-border-row td,.no-border-row th{border:none!important;mso-border-alt:none!important}.no-border-cell,.no-right-border{border:none!important;mso-border-alt:none!important}</style></head><body><table style="border-collapse:collapse;width:100%">{table}</table></body></html>'
+        , template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name><x:WorksheetOptions><x:DoNotDisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--><meta http-equiv="content-type" content="text/plain; charset=UTF-8"/><style>table{width:100%;border-collapse:collapse;margin:24px 0;font-size:16px;background:#fff}th,td{padding:12px 18px;text-align:left;vertical-align:middle}th{background-color:#f2f2f2;color:#000;font-weight:600}.no-border-row td,.no-border-row th{border:none!important;mso-border-alt:none!important}.no-border-cell,.no-right-border{border:none!important;mso-border-alt:none!important}.title-row td,.title-row th{text-align:center!important;font-weight:700!important}</style></head><body><table style="border-collapse:collapse;width:100%">{table}</table></body></html>'
         , base64 = function (s) { return window.btoa(unescape(encodeURIComponent(s))) }
         , format = function (s, c) { return s.replace(/{(\w+)}/g, function (m, p) { return c[p]; }) }
       return function (table, name) {
@@ -40,6 +40,15 @@
             } else {
               applyBorderInline(cell)
             }
+          })
+          var titleCells = working.querySelectorAll('tr.title-row th, tr.title-row td')
+          titleCells && titleCells.forEach(function (cell) {
+            if (!cell || !cell.style) return
+            cell.style.textAlign = 'center'
+            cell.setAttribute('align', 'center')
+            cell.style.fontWeight = '700'
+            cell.style.cssText += ';mso-font-weight:bold;text-align:center;'
+            cell.innerHTML = '<b>' + cell.innerHTML + '</b>'
           })
         } catch (e) { /* noop */ }
         var ctx = { worksheet: name || 'Worksheet', table: working.innerHTML }
@@ -103,6 +112,12 @@
       border: none !important;
     }
 
+    .title-row th,
+    .title-row td {
+      text-align: center;
+      font-weight: 700;
+    }
+
     @media (max-width: 768px) {
 
       table,
@@ -120,17 +135,17 @@
   <div class="container">
     <table id="mainTable">
       <tbody>
-        <tr class="no-border-row">
+        <tr class="no-border-row title-row">
           <td colspan="15">
             नेपाल टेलिकम
           </td>
         </tr>
-        <tr class="no-border-row">
+        <tr class="no-border-row title-row">
           <td colspan="15">
             पदपूर्ति सचिवालय
           </td>
         </tr>
-        <tr class="no-border-row">
+        <tr class="no-border-row title-row">
           <td colspan="15">
             जेष्ठता, भौगोलिक क्षेत्र, शैक्षिक योग्यता र तालिम वापतको अंक गणना तालिका
           </td>

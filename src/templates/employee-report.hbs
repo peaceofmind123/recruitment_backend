@@ -5,12 +5,44 @@
   <script type="text/javascript">
     var tableToExcel = (function () {
       var uri = 'data:application/vnd.ms-excel;base64,'
-        , template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--><meta http-equiv="content-type" content="text/plain; charset=UTF-8"/><style>table{width:100%;border-collapse:collapse;margin:24px 0;font-size:16px;background:#fff}th,td{padding:12px 18px;border:1px solid #000;text-align:left;vertical-align:middle}th{background-color:#f2f2f2;color:#000;font-weight:600}</style></head><body><table border="1" style="border-collapse:collapse;width:100%">{table}</table></body></html>'
+        , template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name><x:WorksheetOptions><x:DoNotDisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--><meta http-equiv="content-type" content="text/plain; charset=UTF-8"/><style>table{width:100%;border-collapse:collapse;margin:24px 0;font-size:16px;background:#fff}th,td{padding:12px 18px;text-align:left;vertical-align:middle}th{background-color:#f2f2f2;color:#000;font-weight:600}.no-border-row td,.no-border-row th{border:none!important;mso-border-alt:none!important}.no-border-cell,.no-right-border{border:none!important;mso-border-alt:none!important}</style></head><body><table style="border-collapse:collapse;width:100%">{table}</table></body></html>'
         , base64 = function (s) { return window.btoa(unescape(encodeURIComponent(s))) }
         , format = function (s, c) { return s.replace(/{(\w+)}/g, function (m, p) { return c[p]; }) }
       return function (table, name) {
         if (!table.nodeType) table = document.getElementById(table)
-        var ctx = { worksheet: name || 'Worksheet', table: table.innerHTML }
+        var working = table.cloneNode(true)
+        var applyNoBorderInline = function (cell) {
+          if (!cell || !cell.style) return
+          cell.style.border = 'none'
+          cell.style.borderTop = 'none'
+          cell.style.borderRight = 'none'
+          cell.style.borderBottom = 'none'
+          cell.style.borderLeft = 'none'
+          cell.style.cssText += ';mso-border-alt:none;mso-border-top-alt:none;mso-border-right-alt:none;mso-border-bottom-alt:none;mso-border-left-alt:none;'
+        }
+        var applyBorderInline = function (cell) {
+          if (!cell || !cell.style) return
+          cell.style.border = '1px solid #000'
+          cell.style.borderTop = '1px solid #000'
+          cell.style.borderRight = '1px solid #000'
+          cell.style.borderBottom = '1px solid #000'
+          cell.style.borderLeft = '1px solid #000'
+          cell.style.cssText += ';mso-border-top-alt:solid-windowtext .5pt;mso-border-right-alt:solid-windowtext .5pt;mso-border-bottom-alt:solid-windowtext .5pt;mso-border-left-alt:solid-windowtext .5pt;'
+        }
+        try {
+          var allCells = working.querySelectorAll('th, td')
+          allCells && allCells.forEach(function (cell) {
+            var tr = cell.parentElement
+            var isRowNoBorder = tr && tr.classList && tr.classList.contains('no-border-row')
+            var isCellNoBorder = cell.classList && (cell.classList.contains('no-border-cell') || cell.classList.contains('no-right-border'))
+            if (isRowNoBorder || isCellNoBorder) {
+              applyNoBorderInline(cell)
+            } else {
+              applyBorderInline(cell)
+            }
+          })
+        } catch (e) { /* noop */ }
+        var ctx = { worksheet: name || 'Worksheet', table: working.innerHTML }
         window.location.href = uri + base64(format(template, ctx))
       }
     })()
@@ -61,6 +93,16 @@
       padding: 1.5rem;
     }
 
+    .no-border-row th,
+    .no-border-row td {
+      border: none !important;
+    }
+
+    .no-border-cell,
+    .no-right-border {
+      border: none !important;
+    }
+
     @media (max-width: 768px) {
 
       table,
@@ -78,50 +120,50 @@
   <div class="container">
     <table id="mainTable">
       <tbody>
-        <tr>
+        <tr class="no-border-row">
           <td colspan="15">
             नेपाल टेलिकम
           </td>
         </tr>
-        <tr>
+        <tr class="no-border-row">
           <td colspan="15">
             पदपूर्ति सचिवालय
           </td>
         </tr>
-        <tr>
+        <tr class="no-border-row">
           <td colspan="15">
             जेष्ठता, भौगोलिक क्षेत्र, शैक्षिक योग्यता र तालिम वापतको अंक गणना तालिका
           </td>
         </tr>
-        <tr>
+        <tr class="no-border-row">
           <td>कर्मचारी नम्बर</td>
           <td>{{employee.employeeId}}</td>
           <td colspan="13">&nbsp;</td>
         </tr>
-        <tr>
+        <tr class="no-border-row">
           <td>कर्मचारीको नाम</td>
           <td>{{employee.name}}</td>
           <td colspan="13"></td>
         </tr>
 
-        <tr>
+        <tr class="no-border-row">
           <td>हालको पद र तह</td>
           <td>{{employee.position}}, {{employee.level}}</td>
           <td colspan="13"></td>
         </tr>
 
-        <tr>
+        <tr class="no-border-row">
           <td>सेवा,समूह,उपसमूह</td>
           <td>{{employee.group}}</td>
           <td colspan="2">जन्म मिति (बि. स.)</td>
           <td>{{employee.dob}}</td>
           <td colspan="10"></td>
         </tr>
-        <tr>
+        <tr class="no-border-row">
           <td>स्थायी ठेगाना</td>
           <td colspan="14"></td>
         </tr>
-        <tr>
+        <tr class="no-border-row">
           <td colspan="8">अंक गणनाको अवधि :</td>
           <td colspan="7">बि.सं. {{endDateBS}} सम्म |</td>
         </tr>
@@ -314,7 +356,7 @@
         <tr>
           <td colspan="15"></td>
         </tr>
-        <tr>
+        <tr class="no-border-row">
           <td>प्राप्तांक:</td>
           <td colspan="14"></td>
         </tr>
@@ -325,35 +367,35 @@
         <tr>
           <td colspan="4">२. भौगोलिक क्षेत्रको प्राप्तांक:</td>
           <td>{{toFixed geographicalTotalMarks 4}}</td>
-          <td></td>
-          <td>तयार गर्ने: </td>
-          <td colspan="3"></td>
-          <td>रुजु गर्ने:</td>
-          <td colspan="2"></td>
-          <td>प्रमाणित गर्ने:</td>
-          <td></td>
+          <td class="no-right-border"></td>
+          <td class="no-right-border">तयार गर्ने: </td>
+          <td class="no-right-border" colspan="3"></td>
+          <td class="no-right-border">रुजु गर्ने:</td>
+          <td class="no-right-border" colspan="2"></td>
+          <td class="no-right-border">प्रमाणित गर्ने:</td>
+          <td class="no-right-border"></td>
         </tr>
         <tr>
           <td colspan="4">३. शैक्षिक योग्यता बापतको अंक:</td>
           <td></td>
-          <td></td>
-          <td>नाम</td>
-          <td colspan="3"></td>
-          <td>नाम</td>
-          <td colspan="2"></td>
-          <td>नाम</td>
-          <td></td>
+          <td class="no-right-border"></td>
+          <td class="no-right-border">नाम</td>
+          <td class="no-right-border" colspan="3"></td>
+          <td class="no-right-border">नाम</td>
+          <td class="no-right-border" colspan="2"></td>
+          <td class="no-right-border">नाम</td>
+          <td class="no-right-border"></td>
         </tr>
         <tr>
           <td colspan="4">४. तालिम बापतको अंक:</td>
           <td>0.0000</td>
-          <td></td>
-          <td>दस्तखत</td>
-          <td colspan="3"></td>
-          <td>दस्तखत</td>
-          <td colspan="2"></td>
-          <td>दस्तखत</td>
-          <td></td>
+          <td class="no-right-border"></td>
+          <td class="no-right-border">दस्तखत</td>
+          <td class="no-right-border" colspan="3"></td>
+          <td class="no-right-border">दस्तखत</td>
+          <td class="no-right-border" colspan="2"></td>
+          <td class="no-right-border">दस्तखत</td>
+          <td class="no-right-border"></td>
         </tr>
         <tr>
           <td colspan="4">जम्मा अंक</td>

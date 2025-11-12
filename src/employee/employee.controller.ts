@@ -421,7 +421,7 @@ export class EmployeeController {
     @Get('report/html')
     @ApiOperation({ summary: 'Render employee report as HTML (templated)' })
     @ApiQuery({ name: 'employeeId', type: Number, required: true })
-    @ApiQuery({ name: 'startLevel', type: Number, required: false })
+    @ApiQuery({ name: 'startLevel', type: String, required: false, description: 'Start level number or "current" to use employee.level' })
     @ApiQuery({ name: 'endLevel', type: Number, required: false })
     @ApiQuery({ name: 'defaultEndDateBS', type: String, required: false })
     @ApiQuery({ name: 'endDateBS', type: String, required: false })
@@ -440,8 +440,15 @@ export class EmployeeController {
             throw new NotFoundException('Invalid employeeId');
         }
 
-        // Reuse existing aggregation
-        const details = await this.getEmployeeCompleteDetails(employeeId, startLevel, endLevel, defaultEndDateBS, endDateBS, leaveType);
+        // Resolve "current" to the employee's level if provided
+        let effectiveStartLevel = startLevel;
+        if (typeof startLevel === 'string' && startLevel.trim().toLowerCase() === 'current') {
+            const basic = await this.employeeService.getEmployeeBasicDetails(id);
+            effectiveStartLevel = (basic?.level ?? undefined) !== undefined ? String(basic!.level) : undefined;
+        }
+
+        // Reuse existing aggregation with resolved startLevel
+        const details = await this.getEmployeeCompleteDetails(employeeId, effectiveStartLevel, endLevel, defaultEndDateBS, endDateBS, leaveType);
 
         // add additional arguments to seniority details
 

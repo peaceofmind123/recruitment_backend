@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, HttpCode, HttpStatus, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, HttpCode, HttpStatus, Query, NotFoundException, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { ApplicantService } from './applicant.service';
 import { CreateApplicantDto } from './dto/create-applicant.dto';
@@ -6,11 +6,19 @@ import { Applicant } from './entities/applicant.entity';
 import { SeniorityDetailsDto } from './dto/seniority-details.dto';
 import { ScorecardDto } from './dto/scorecard.dto';
 import { ApplicantCompleteDetailsDto } from './dto/applicant-complete-details.dto';
+import { TemplateRendererService } from '../common/template-renderer.service';
+import { EmployeeService } from '../employee/employee.service';
+import { Sex } from '../employee/entities/employee.entity';
+import { Response } from 'express';
 
 @ApiTags('applicants')
 @Controller('applicant')
 export class ApplicantController {
-    constructor(private readonly applicantService: ApplicantService) { }
+    constructor(
+        private readonly applicantService: ApplicantService,
+        private readonly templateRenderer: TemplateRendererService,
+        private readonly employeeService: EmployeeService,
+    ) { }
 
     @Post()
     @HttpCode(HttpStatus.CREATED)
@@ -139,5 +147,75 @@ export class ApplicantController {
         @Query('leaveType') leaveType?: string
     ): Promise<ApplicantCompleteDetailsDto> {
         return this.applicantService.getScorecard(+employeeId, bigyapanNo, leaveType);
+    }
+
+    @Get('scorecard/html')
+    @ApiOperation({ summary: 'Render applicant scorecard as HTML (templated)' })
+    @ApiQuery({ name: 'employeeId', type: Number, required: true })
+    @ApiQuery({ name: 'bigyapanNo', type: String, required: true })
+    @ApiQuery({ name: 'leaveType', type: String, required: false })
+    async renderApplicantScorecardHtml(
+        @Query('employeeId') employeeId: string,
+        @Query('bigyapanNo') bigyapanNo: string,
+        @Query('leaveType') leaveType?: string,
+        @Res() res?: Response,
+    ) {
+        const id = parseInt(employeeId, 10);
+        if (isNaN(id)) {
+            throw new NotFoundException('Invalid employeeId');
+        }
+
+        const details = await this.applicantService.getScorecard(id, bigyapanNo, leaveType);
+
+        // Augment with education and gender from base entity
+        const base = await this.employeeService.getEmployeeById(id);
+        const gender = base?.sex === Sex.M ? 'M' : (base?.sex === Sex.F ? 'F' : '');
+        const employee = {
+            employeeId: details.employeeId,
+            name: details.name,
+            level: details.level,
+            workingOffice: details.workingOffice,
+            position: details.position,
+            dob: details.dob,
+            group: details.group,
+            education: base?.education || '',
+            gender
+        } as any;
+
+        const seniorityTotalMarks =
+            Array.isArray(details.seniorityDetails)
+                ? (details.seniorityDetails as any[]).flat().reduce((sum, seg: any) => {
+                    const v = typeof seg?.marks === 'number' ? seg.marks : Number(seg?.marks) || 0;
+                    return sum + v;
+                }, 0)
+                : 0;
+
+        const geographicalTotalMarks =
+            Array.isArray(details.assignments)
+                ? (details.assignments as any[]).reduce((sum, seg: any) => {
+                    const v = typeof seg?.totalMarks === 'number' ? seg.totalMarks : Number(seg?.totalMarks) || 0;
+                    return sum + v;
+                }, 0)
+                : 0;
+
+        const combinedTotalMarks = seniorityTotalMarks + geographicalTotalMarks;
+
+        const html = this.templateRenderer.render('applicant-report', {
+            employee,
+            seniorityDetails: details.seniorityDetails,
+            absents: details.absents,
+            leaves: details.leaves,
+            assignments: details.assignments,
+            seniorityTotalMarks,
+            geographicalTotalMarks,
+            combinedTotalMarks,
+            endDateBS: details.bigyapanEndDateBS
+        });
+
+        if (res) {
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            return res.send(html);
+        }
+        return html;
     }
 } 

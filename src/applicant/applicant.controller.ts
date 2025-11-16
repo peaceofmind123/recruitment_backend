@@ -198,7 +198,7 @@ export class ApplicantController {
                 }, 0)
                 : 0;
 
-        const combinedTotalMarks = seniorityTotalMarks + geographicalTotalMarks;
+        const combinedTotalMarks = seniorityTotalMarks + geographicalTotalMarks + (details.educationMarks || 0);
 
         const html = this.templateRenderer.render('applicant-report', {
             employee,
@@ -212,7 +212,10 @@ export class ApplicantController {
             endDateBS: details.bigyapanEndDateBS,
             bigyapanNo,
             appliedPosition: details.appliedPosition,
-            appliedLevel: details.appliedLevel
+            appliedLevel: details.appliedLevel,
+            educationMarks: details.educationMarks,
+            minQualifications: details.minQualifications,
+            additionalQualifications: details.additionalQualifications
         });
 
         if (res) {

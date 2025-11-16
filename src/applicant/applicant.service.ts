@@ -76,7 +76,7 @@ export class ApplicantService {
         // Find the applicant with relations
         const applicant = await this.applicantRepository.findOne({
             where: { employeeId, bigyapanNo },
-            relations: ['employee', 'vacancy']
+            relations: ['employee', 'vacancy', 'vacancy.minQualifications', 'vacancy.additionalQualifications']
         });
 
         if (!applicant) {
@@ -286,6 +286,9 @@ export class ApplicantService {
             appliedPosition: applicant.vacancy.position,
             appliedLevel: applicant.vacancy.level,
             bigyapanEndDateBS: endDateBS,
+            educationMarks: typeof applicant.educationMarks === 'number' ? applicant.educationMarks : (Number(applicant.educationMarks) || 0),
+            minQualifications: (applicant.vacancy.minQualifications || []).map(q => q.qualification),
+            additionalQualifications: (applicant.vacancy.additionalQualifications || []).map(q => q.qualification),
         };
 
         return response;

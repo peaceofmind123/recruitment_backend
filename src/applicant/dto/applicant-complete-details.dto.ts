@@ -13,12 +13,21 @@ export class ApplicantCompleteDetailsDto extends EmployeeCompleteDetailsDto {
 
     @ApiProperty({ description: 'Applied position from vacancy' })
     appliedPosition: string;
-    
-    @ApiProperty({description: 'Applied level from vacancy'})
+
+    @ApiProperty({ description: 'Applied level from vacancy' })
     appliedLevel: number;
 
     @ApiProperty({ description: 'Vacancy bigyapan end date in BS (used for calculations)' })
     bigyapanEndDateBS: string;
+
+    @ApiProperty({ description: 'Education marks of the applicant', required: false, type: Number })
+    educationMarks?: number;
+
+    @ApiProperty({ description: 'Vacancy minimum qualifications (names)', required: false, type: [String] })
+    minQualifications?: string[];
+
+    @ApiProperty({ description: 'Vacancy additional qualifications (names)', required: false, type: [String] })
+    additionalQualifications?: string[];
 }
 
 

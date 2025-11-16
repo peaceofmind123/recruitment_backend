@@ -345,12 +345,16 @@
           <td colspan="5">{{employee.education}}</td>
           <td></td>
           <td></td>
-          <td></td>
+          <td>{{toFixed educationMarks 2}}</td>
           <td></td>
         </tr>
         <tr>
           <td colspan="6">तोकिएको न्युनतम शैक्षिक योग्यता</td>
-          <td colspan="5"></td>
+          <td colspan="5">
+            {{#if minQualifications}}
+            {{#each minQualifications}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+            {{else}}-{{/if}}
+          </td>
           <td></td>
           <td></td>
           <td></td>
@@ -358,7 +362,11 @@
         </tr>
         <tr>
           <td colspan="6">न्युनतम शैक्षिक योगता भन्दा माथिको सम्वन्धित विषयको एक शैक्षिक उपाधि</td>
-          <td colspan="5"></td>
+          <td colspan="5">
+            {{#if additionalQualifications}}
+            {{#each additionalQualifications}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+            {{else}}-{{/if}}
+          </td>
           <td></td>
           <td></td>
           <td></td>
@@ -399,7 +407,7 @@
         </tr>
         <tr>
           <td colspan="4">३. शैक्षिक योग्यता बापतको अंक:</td>
-          <td></td>
+          <td>{{toFixed educationMarks 4}}</td>
           <td class="no-right-border"></td>
           <td class="no-right-border">नाम</td>
           <td class="no-right-border" colspan="3"></td>

@@ -158,13 +158,17 @@
         <tr class="no-border-row">
           <td>कर्मचारीको नाम</td>
           <td>{{employee.name}}</td>
-          <td colspan="13"></td>
+          <td colspan="9"></td>
+          <td>टोकन नं.</td>
+          <td></td>
         </tr>
 
         <tr class="no-border-row">
           <td>हालको पद र तह</td>
           <td>{{employee.position}}, {{employee.level}}</td>
-          <td colspan="13"></td>
+          <td colspan="9"></td>
+          <td>बि.नं.: </td>
+          <td>{{bigyapanNo}}</td>
         </tr>
 
         <tr class="no-border-row">
@@ -172,7 +176,10 @@
           <td>{{employee.group}}</td>
           <td colspan="2">जन्म मिति (बि. स.)</td>
           <td>{{employee.dob}}</td>
-          <td colspan="10"></td>
+          <td colspan="6"></td>
+          <td>पद र तह :</td>
+          <td>{{appliedPosition}}</td>
+          <td>{{appliedLevel}}</td>
         </tr>
         <tr class="no-border-row">
           <td>स्थायी ठेगाना</td>
@@ -424,4 +431,3 @@
 </body>
 
 </html>
-

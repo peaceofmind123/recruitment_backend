@@ -13,6 +13,9 @@ export class ApplicantCompleteDetailsDto extends EmployeeCompleteDetailsDto {
 
     @ApiProperty({ description: 'Applied position from vacancy' })
     appliedPosition: string;
+    
+    @ApiProperty({description: 'Applied level from vacancy'})
+    appliedLevel: number;
 
     @ApiProperty({ description: 'Vacancy bigyapan end date in BS (used for calculations)' })
     bigyapanEndDateBS: string;

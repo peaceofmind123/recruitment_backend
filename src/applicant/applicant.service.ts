@@ -284,6 +284,7 @@ export class ApplicantService {
             service: applicant.vacancy.service,
             subgroup: applicant.vacancy.subGroup,
             appliedPosition: applicant.vacancy.position,
+            appliedLevel: applicant.vacancy.level,
             bigyapanEndDateBS: endDateBS,
         };
 

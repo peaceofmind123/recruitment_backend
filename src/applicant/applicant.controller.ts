@@ -209,7 +209,10 @@ export class ApplicantController {
             seniorityTotalMarks,
             geographicalTotalMarks,
             combinedTotalMarks,
-            endDateBS: details.bigyapanEndDateBS
+            endDateBS: details.bigyapanEndDateBS,
+            bigyapanNo,
+            appliedPosition: details.appliedPosition,
+            appliedLevel: details.appliedLevel
         });
 
         if (res) {

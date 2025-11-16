@@ -46,6 +46,29 @@ export class TemplateRendererService {
 			}
 			return num.toFixed(decInt);
 		});
+
+		Handlebars.registerHelper('multiplyFixed', (...args: any[]) => {
+			const lastArg = args[args.length - 1];
+			const values = lastArg && typeof lastArg === 'object' && lastArg !== null && 'hash' in lastArg
+				? args.slice(0, -1)
+				: args;
+			if (values.length < 3) {
+				throw new Error('multiplyFixed helper requires three arguments: a, b, decimals');
+			}
+			const [a, b, decimals] = values;
+			const aNum = typeof a === 'number' ? a : Number(a);
+			const bNum = typeof b === 'number' ? b : Number(b);
+			const dec = typeof decimals === 'number' ? decimals : Number(decimals);
+			if (Number.isNaN(aNum) || Number.isNaN(bNum) || Number.isNaN(dec)) {
+				throw new Error('multiplyFixed helper accepts numeric arguments');
+			}
+			const decInt = Math.trunc(dec);
+			if (decInt < 0) {
+				throw new Error('multiplyFixed decimals must be >= 0');
+			}
+			const product = aNum * bNum;
+			return product.toFixed(decInt);
+		});
     }
 
     private resolveTemplatePath(templateName: string): string {

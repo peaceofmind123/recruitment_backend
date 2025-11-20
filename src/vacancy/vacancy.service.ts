@@ -422,4 +422,48 @@ export class VacancyService {
 
         return { message: 'Geographical marks calculated and updated successfully' };
     }
+
+    async getVacancyReportData(bigyapanNo: string): Promise<{ bigyapanNo: string; applicants: Array<{ name: string; employeeId: number; seniorityMarks: number; geographicalMarks: number; educationMarks: number; trainingMarks: number; totalMarks: number; rank: number; }> }> {
+        const applicants = await this.applicantRepository.find({
+            where: { bigyapanNo },
+            relations: ['employee']
+        });
+
+        if (!applicants.length) {
+            throw new NotFoundException(`No applicants found for vacancy ${bigyapanNo}`);
+        }
+
+        const rows = applicants.map(a => {
+            const seniority = typeof a.seniorityMarks === 'number' ? a.seniorityMarks : (Number(a.seniorityMarks) || 0);
+            const geographical = a.geographicalMarks == null ? 0 : (typeof a.geographicalMarks === 'number' ? a.geographicalMarks : (Number(a.geographicalMarks) || 0));
+            const education = typeof a.educationMarks === 'number' ? a.educationMarks : (Number(a.educationMarks) || 0);
+            const training = 0;
+            const total = seniority + geographical + education + training;
+            return {
+                name: a.employee?.name || '',
+                employeeId: a.employeeId,
+                seniorityMarks: seniority,
+                geographicalMarks: geographical,
+                educationMarks: education,
+                trainingMarks: training,
+                totalMarks: total
+            };
+        });
+
+        // Sort by total descending and compute competition ranking (1,2,2,4)
+        rows.sort((x, y) => (y.totalMarks - x.totalMarks) || (x.employeeId - y.employeeId));
+        let lastTotal = Number.NEGATIVE_INFINITY;
+        let lastRank = 0;
+        let index = 0;
+        const ranked = rows.map(r => {
+            index += 1;
+            if (r.totalMarks !== lastTotal) {
+                lastRank = index;
+                lastTotal = r.totalMarks;
+            }
+            return { ...r, rank: lastRank };
+        });
+
+        return { bigyapanNo, applicants: ranked };
+    }
 } 

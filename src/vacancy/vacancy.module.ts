@@ -14,12 +14,14 @@ import { QualificationService } from './qualification.service';
 import { PostDetail } from './entities/post-detail.entity';
 import { PostDetailService } from './post-detail.service';
 import { PostDetailController } from './post-detail.controller';
+import { CommonModule } from '../common/common.module';
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([Vacancy, FiscalYear, Applicant, Employee, Qualification, PostDetail]),
         forwardRef(() => ApplicantModule),
-        EmployeeModule
+        EmployeeModule,
+        CommonModule
     ],
     controllers: [VacancyController, QualificationController, PostDetailController],
     providers: [VacancyService, QualificationService, PostDetailService],

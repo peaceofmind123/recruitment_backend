@@ -8,11 +8,15 @@ import { UpdateVacancyDto } from './dto/update-vacancy.dto';
 import { UploadApprovedApplicantListDto } from './dto/upload-approved-applicant-list.dto';
 import { Vacancy } from './entities/vacancy.entity';
 import { SeniorityMarksDto } from './dto/seniority-marks.dto';
+import { TemplateRendererService } from '../common/template-renderer.service';
 
 @ApiTags('vacancies')
 @Controller('vacancy')
 export class VacancyController {
-    constructor(private readonly vacancyService: VacancyService) { }
+    constructor(
+        private readonly vacancyService: VacancyService,
+        private readonly templateRenderer: TemplateRendererService,
+    ) { }
 
     @Post()
     @ApiOperation({ summary: 'Create a new vacancy' })
@@ -147,5 +151,21 @@ export class VacancyController {
         @Param('bigyapanNo') bigyapanNo: string
     ) {
         return this.vacancyService.calculateGeographicalMarks(bigyapanNo);
+    }
+
+    @Get('report')
+    @ApiOperation({ summary: 'Render vacancy applicants report as HTML (templated)' })
+    @ApiQuery({ name: 'bigyapanNo', type: String, required: true })
+    async renderVacancyApplicantsReportHtml(
+        @Query('bigyapanNo') bigyapanNo: string,
+        @Res() res: Response
+    ) {
+        if (!bigyapanNo || !bigyapanNo.toString().trim()) {
+            throw new BadRequestException('Query parameter "bigyapanNo" is required');
+        }
+        const data = await this.vacancyService.getVacancyReportData(bigyapanNo);
+        const html = this.templateRenderer.render('vacancy-report', data);
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.send(html);
     }
 } 

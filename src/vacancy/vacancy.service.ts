@@ -15,7 +15,7 @@ import { Employee } from '../employee/entities/employee.entity';
 import { SeniorityMarksDto } from './dto/seniority-marks.dto';
 import { In } from 'typeorm';
 import { Qualification } from './entities/qualification.entity';
-import { AssignmentDetail } from '../employee/entities/assignment-detail.entity';
+import { EmployeeService } from '../employee/employee.service';
 
 interface ExcelRow {
     'Employee ID': string | number;
@@ -36,6 +36,7 @@ export class VacancyService {
         private employeeRepository: Repository<Employee>,
         @InjectRepository(Qualification)
         private qualificationRepository: Repository<Qualification>,
+        private readonly employeeService: EmployeeService,
     ) { }
 
     async create(createVacancyDto: CreateVacancyDto): Promise<Vacancy> {
@@ -396,34 +397,20 @@ export class VacancyService {
         return { message: 'Seniority marks calculated and updated successfully' };
     }
 
-    async calculateGeographicalMarks(bigyapanNo: string) {
-        // Find all applicants for the vacancy, including their employee and assignments
-        const applicants = await this.applicantRepository.find({
-            where: { bigyapanNo },
-            relations: ['employee', 'employee.assignments']
-        });
-
-        if (!applicants.length) {
-            throw new BadRequestException('No applicants found for this vacancy');
-        }
-
-        for (const applicant of applicants) {
-            const assignments = applicant.employee?.assignments || [];
-            let geoSum: number | null = null;
-            if (assignments.length > 0) {
-                // Only consider assignments with the same level as the employee
-                geoSum = assignments
-                    .filter(assignment => assignment.level === applicant.employee.level)
-                    .reduce((acc, v) => acc + (Number(v.totalGeographicalMarks) || 0), 0);
-            }
-            applicant.geographicalMarks = geoSum;
-            await this.applicantRepository.save(applicant);
-        }
-
-        return { message: 'Geographical marks calculated and updated successfully' };
-    }
-
     async getVacancyReportData(bigyapanNo: string): Promise<{ bigyapanNo: string; applicants: Array<{ name: string; employeeId: number; seniorityMarks: number; geographicalMarks: number; educationMarks: number; trainingMarks: number; totalMarks: number; rank: number; }> }> {
+        // Ensure vacancy exists and get end date BS to align with applicant report logic
+        const vacancy = await this.vacancyRepository.findOne({ where: { bigyapanNo } });
+        if (!vacancy) {
+            throw new NotFoundException(`Vacancy with bigyapan number ${bigyapanNo} not found`);
+        }
+        if (!vacancy.bigyapanEndDate) {
+            throw new NotFoundException(`Bigyapan end date not found for vacancy ${bigyapanNo}`);
+        }
+        const endDateBS = await (async () => {
+            const { formatBS } = await import('../common/utils/nepali-date.utils');
+            return await formatBS(new Date(vacancy.bigyapanEndDate as any));
+        })();
+
         const applicants = await this.applicantRepository.find({
             where: { bigyapanNo },
             relations: ['employee']
@@ -433,9 +420,21 @@ export class VacancyService {
             throw new NotFoundException(`No applicants found for vacancy ${bigyapanNo}`);
         }
 
-        const rows = applicants.map(a => {
+        const rows = await Promise.all(applicants.map(async a => {
             const seniority = typeof a.seniorityMarks === 'number' ? a.seniorityMarks : (Number(a.seniorityMarks) || 0);
-            const geographical = a.geographicalMarks == null ? 0 : (typeof a.geographicalMarks === 'number' ? a.geographicalMarks : (Number(a.geographicalMarks) || 0));
+            // Compute geographical marks from assignments (same approach as applicant-report)
+            const assignments = await this.employeeService.getEmployeeAssignmentsWithExtras(
+                a.employeeId,
+                a.employee?.level ?? undefined,
+                undefined,
+                endDateBS
+            );
+            const geographical = Array.isArray(assignments)
+                ? (assignments as any[]).reduce((sum, seg: any) => {
+                    const v = typeof seg?.totalMarks === 'number' ? seg.totalMarks : Number(seg?.totalMarks) || 0;
+                    return sum + v;
+                }, 0)
+                : 0;
             const education = typeof a.educationMarks === 'number' ? a.educationMarks : (Number(a.educationMarks) || 0);
             const training = 0;
             const total = seniority + geographical + education + training;
@@ -448,7 +447,7 @@ export class VacancyService {
                 trainingMarks: training,
                 totalMarks: total
             };
-        });
+        }));
 
         // Sort by total descending and compute competition ranking (1,2,2,4)
         rows.sort((x, y) => (y.totalMarks - x.totalMarks) || (x.employeeId - y.employeeId));

@@ -7,7 +7,6 @@ import { CreateVacancyDto } from './dto/create-vacancy.dto';
 import { UpdateVacancyDto } from './dto/update-vacancy.dto';
 import { UploadApprovedApplicantListDto } from './dto/upload-approved-applicant-list.dto';
 import { Vacancy } from './entities/vacancy.entity';
-import { SeniorityMarksDto } from './dto/seniority-marks.dto';
 import { TemplateRendererService } from '../common/template-renderer.service';
 
 @ApiTags('vacancies')
@@ -139,10 +138,9 @@ export class VacancyController {
     @Post(':bigyapanNo/seniority-marks')
     @ApiOperation({ summary: 'Calculate seniority marks for all applicants of a vacancy' })
     async calculateSeniorityMarks(
-        @Param('bigyapanNo') bigyapanNo: string,
-        @Body() dto: SeniorityMarksDto
+        @Param('bigyapanNo') bigyapanNo: string
     ) {
-        return this.vacancyService.calculateSeniorityMarks(bigyapanNo, dto);
+        return this.vacancyService.calculateSeniorityMarks(bigyapanNo);
     }
 
     @Get('report')

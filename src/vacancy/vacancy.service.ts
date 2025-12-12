@@ -12,7 +12,6 @@ import { CreateApplicantDto } from '../applicant/dto/create-applicant.dto';
 import * as XLSX from 'xlsx';
 import { Applicant } from '../applicant/entities/applicant.entity';
 import { Employee } from '../employee/entities/employee.entity';
-import { SeniorityMarksDto } from './dto/seniority-marks.dto';
 import { In } from 'typeorm';
 import { Qualification } from './entities/qualification.entity';
 import { EmployeeService } from '../employee/employee.service';
@@ -356,8 +355,8 @@ export class VacancyService {
         };
     }
 
-    async calculateSeniorityMarks(bigyapanNo: string, dto: SeniorityMarksDto) {
-        // Find the vacancy and update it with bigyapanEndDate
+    async calculateSeniorityMarks(bigyapanNo: string) {
+        // Find the vacancy and ensure it has bigyapanEndDate set
         const vacancy = await this.vacancyRepository.findOne({
             where: { bigyapanNo }
         });
@@ -366,12 +365,11 @@ export class VacancyService {
             throw new NotFoundException(`Vacancy with bigyapan number ${bigyapanNo} not found`);
         }
 
-        // Convert the date string to a Date object
-        const bigyapanEndDate = new Date(dto.bigyapanEndDate);
+        if (!vacancy.bigyapanEndDate) {
+            throw new BadRequestException(`Bigyapan end date not set for vacancy ${bigyapanNo}`);
+        }
 
-        // Update vacancy with bigyapanEndDate
-        vacancy.bigyapanEndDate = bigyapanEndDate;
-        await this.vacancyRepository.save(vacancy);
+        const bigyapanEndDate = new Date(vacancy.bigyapanEndDate as any);
 
         // Find all applicants for the vacancy
         const applicants = await this.applicantRepository.find({

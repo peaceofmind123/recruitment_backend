@@ -51,4 +51,8 @@ export class CreateVacancyDto {
     @IsArray()
     @IsString({ each: true })
     additionalQualifications?: string[];
+
+    @ApiProperty({ description: 'Bigyapan end date in BS (YYYY-MM-DD or YYYY/MM/DD)' })
+    @IsString()
+    bigyapanEndDate: string;
 } 

@@ -16,6 +16,7 @@ import { SeniorityMarksDto } from './dto/seniority-marks.dto';
 import { In } from 'typeorm';
 import { Qualification } from './entities/qualification.entity';
 import { EmployeeService } from '../employee/employee.service';
+const NepaliDate = require('nepali-datetime');
 
 interface ExcelRow {
     'Employee ID': string | number;
@@ -64,8 +65,31 @@ export class VacancyService {
             });
         }
 
+        // Convert BS end date to AD using the same logic pattern as employee report endpoints
+        let bigyapanEndDateAD: Date | undefined = undefined;
+        if (createVacancyDto.bigyapanEndDate && createVacancyDto.bigyapanEndDate.trim()) {
+            const normalized = createVacancyDto.bigyapanEndDate.replace(/-/g, '/');
+            const parts = normalized.split(/[\/\-]/);
+            if (parts.length !== 3) {
+                throw new BadRequestException('Invalid bigyapanEndDate');
+            }
+            const bsYear = parseInt(parts[0]);
+            const bsMonth = parseInt(parts[1]);
+            const bsDay = parseInt(parts[2]);
+            if (isNaN(bsYear) || isNaN(bsMonth) || isNaN(bsDay)) {
+                throw new BadRequestException('Invalid bigyapanEndDate');
+            }
+            try {
+                const nd = new NepaliDate(bsYear, bsMonth - 1, bsDay);
+                bigyapanEndDateAD = nd.getDateObject();
+            } catch {
+                throw new BadRequestException('Invalid bigyapanEndDate');
+            }
+        }
+
         const vacancy = this.vacancyRepository.create({
             ...createVacancyDto,
+            bigyapanEndDate: bigyapanEndDateAD,
             fiscalYear,
             minQualifications,
             additionalQualifications

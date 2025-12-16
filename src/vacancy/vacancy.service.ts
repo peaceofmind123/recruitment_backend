@@ -15,6 +15,7 @@ import { Employee } from '../employee/entities/employee.entity';
 import { In } from 'typeorm';
 import { Qualification } from './entities/qualification.entity';
 import { EmployeeService } from '../employee/employee.service';
+import { diffNepaliYMDWithTotalDays, formatBS } from '../common/utils/nepali-date.utils';
 const NepaliDate = require('nepali-datetime');
 
 interface ExcelRow {
@@ -403,13 +404,19 @@ export class VacancyService {
                 );
             }
 
-            // Calculate number of days between seniority date and bigyapan end date
-            const numDays = Math.floor(
-                (bigyapanEndDate.getTime() - employeeSeniorityDate.getTime()) / (1000 * 60 * 60 * 24)
+            // Calculate number of days between seniority date and bigyapan end date using BS Y/M/D diff
+            const seniorityDateBS = await formatBS(employeeSeniorityDate);
+            const bigyapanEndDateBS = await formatBS(bigyapanEndDate);
+            const { totalNumDays: numDays, years, months, days } = await diffNepaliYMDWithTotalDays(
+                seniorityDateBS,
+                bigyapanEndDateBS,
             );
 
             // Calculate seniority marks (max 30)
-            const seniorityMarks = Math.min((numDays / 365) * 3.75, 30);
+            const seniorityMarksFromYMD = numDays > 0
+                ? years * 3.75 + months * (3.75 / 12) + days * (3.75 / 365)
+                : 0;
+            const seniorityMarks = Math.min(seniorityMarksFromYMD, 30);
 
             // Update applicant's seniority marks
             applicant.seniorityMarks = seniorityMarks;

@@ -179,8 +179,8 @@
           <td colspan="14"></td>
         </tr>
         <tr class="no-border-row">
-          <td colspan="8">अंक गणनाको अवधि :</td>
-          <td colspan="7">बि.सं. {{endDateBS}} सम्म |</td>
+          <td colspan="6" style="text-align:right">अंक गणनाको अवधि :</td>
+          <td colspan="9" style="text-align: left;">बि.सं. {{endDateBS}} सम्म |</td>
         </tr>
         <tr>
           <td colspan="3">१. जेष्ठता विवरण</td>
@@ -217,9 +217,9 @@
           <td>{{months}}</td>
           <td>{{days}}</td>
           <td>3.75</td>
-          <td>{{multiply 3.75 years}}</td>
-          <td>{{multiply 0.3125 months}}</td>
-          <td>{{multiply 0.01027 days}}</td>
+          <td>{{multiplyFixed 3.75 years 2}}</td>
+          <td>{{multiplyFixed 0.3125 months 2}}</td>
+          <td>{{multiplyFixed 0.01027 days 2}}</td>
           <td>{{toFixed marks 2}}</td>
           <td>{{toFixed marks 2}}</td>
           <td>{{remarks}}</td>

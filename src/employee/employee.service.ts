@@ -839,6 +839,8 @@ export class EmployeeService {
         let isProcessingAssignments = false;
         let assignmentHeaders: string[] = [];
         let currentAssignments: AssignmentDetailDto[] = [];
+        let previousAssignmentRow: AssignmentDetailDto | null = null;
+        const levelFirstRowProcessed = new Set<number>();
         // New sections state
         let isProcessingAbsents = false;
         let isProcessingLeaves = false;
@@ -890,6 +892,8 @@ export class EmployeeService {
                     rewardsPunishments: []
                 };
                 currentAssignments = [];
+                previousAssignmentRow = null;
+                levelFirstRowProcessed.clear();
                 currentAbsents = [];
                 currentLeaves = [];
                 currentRewards = [];
@@ -971,6 +975,8 @@ export class EmployeeService {
                 isProcessingAbsents = false;
                 isProcessingLeaves = false;
                 isProcessingRewards = false;
+                previousAssignmentRow = null;
+                levelFirstRowProcessed.clear();
                 if (currentEmployee.employeeId) {
                     // Save assignments to database
                     await this.saveAssignmentsToDatabase(currentEmployee.employeeId, currentAssignments, currentEmployeeGender);
@@ -1106,6 +1112,65 @@ export class EmployeeService {
                 assignment.empType = assignment.empType ?? '';
                 assignment.workOffice = assignment.workOffice ?? '';
                 assignment.level = assignment.level ?? 0;
+
+                // Handle synthetic pre-level assignment if seniority date is before start date (first row per level)
+                const levelValue = assignment.level;
+                const isFirstRowForLevel = typeof levelValue === 'number' && !isNaN(levelValue) && !levelFirstRowProcessed.has(levelValue);
+                if (isFirstRowForLevel) {
+                    levelFirstRowProcessed.add(levelValue);
+
+                    const normalizedStart = assignment.startDateBS ? await this.normalizeBsDateValue(assignment.startDateBS) : '';
+                    const normalizedSeniority = assignment.seniorityDateBS ? await this.normalizeBsDateValue(assignment.seniorityDateBS) : '';
+                    assignment.startDateBS = normalizedStart || assignment.startDateBS;
+                    assignment.seniorityDateBS = normalizedSeniority || assignment.seniorityDateBS;
+
+                    // Coerce common m/d/yyyy BS strings into yyyy-mm-dd so NepaliDate can parse them
+                    const coerceToYMD = (raw: string) => {
+                        const match = raw?.match?.(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+                        if (match) {
+                            const [, m, d, y] = match;
+                            return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+                        }
+                        return raw;
+                    };
+                    const startForCheck = assignment.startDateBS ? coerceToYMD(assignment.startDateBS) : '';
+                    const seniorityForCheck = assignment.seniorityDateBS ? coerceToYMD(assignment.seniorityDateBS) : '';
+                    const displayStart = startForCheck || assignment.startDateBS;
+                    const displaySeniority = seniorityForCheck || assignment.seniorityDateBS;
+                    assignment.startDateBS = displayStart;
+                    assignment.seniorityDateBS = displaySeniority;
+
+                    const startForCompare = (assignment.startDateBS || '').replace(/\//g, '-');
+                    const seniorityForCompare = (assignment.seniorityDateBS || '').replace(/\//g, '-');
+
+                    if (startForCompare && seniorityForCompare && startForCompare > seniorityForCompare) {
+                        let endFormatted = startForCompare;
+                        try {
+                            const [yy, mm, dd] = startForCompare.split('-').map(v => parseInt(v, 10));
+                            const jsDate = new Date(yy, (mm ?? 1) - 1, dd ?? 1);
+                            jsDate.setDate(jsDate.getDate() - 1);
+                            endFormatted = `${jsDate.getFullYear()}-${(jsDate.getMonth() + 1).toString().padStart(2, '0')}-${jsDate.getDate().toString().padStart(2, '0')}`;
+                        } catch { /* fallback to startForCompare */ }
+
+                        const base = previousAssignmentRow ? { ...previousAssignmentRow } : { ...assignment };
+                        const syntheticAssignment: AssignmentDetailDto = {
+                            ...base,
+                            employeeId: assignment.employeeId ?? 0,
+                            position: assignment.position ?? base.position ?? '',
+                            level: levelValue,
+                            startDateBS: seniorityForCompare,
+                            endDateBS: endFormatted,
+                            jobs: base.jobs ?? '',
+                            function: base.function ?? '',
+                            empCategory: base.empCategory ?? '',
+                            empType: base.empType ?? '',
+                            workOffice: base.workOffice ?? '',
+                            reasonForPosition: base.reasonForPosition ?? '',
+                        };
+                        currentAssignments.push(syntheticAssignment);
+                    }
+                }
+
                 // Only add assignment if it has more than just employeeId and has startDateBS
                 // Note: endDateBS can be null/undefined for current assignments
                 if (
@@ -1114,6 +1179,7 @@ export class EmployeeService {
                 ) {
                     currentAssignments.push(assignment as AssignmentDetailDto);
                 }
+                previousAssignmentRow = assignment as AssignmentDetailDto;
                 continue;
             }
 

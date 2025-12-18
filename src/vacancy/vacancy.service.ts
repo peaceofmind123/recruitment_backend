@@ -372,7 +372,12 @@ export class VacancyService {
 
         // Update vacancy with file path
         vacancy.approvedApplicantList = filePath;
-        return this.vacancyRepository.save(vacancy);
+        const savedVacancy = await this.vacancyRepository.save(vacancy);
+
+        // After a valid file upload, recompute seniority marks using the same logic as the dedicated endpoint
+        await this.calculateSeniorityMarks(bigyapanNo);
+
+        return savedVacancy;
     }
 
     async getApprovedApplicantList(bigyapanNo: string): Promise<{ filePath: string; fileName: string }> {

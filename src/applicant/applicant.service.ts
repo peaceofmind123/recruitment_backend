@@ -13,6 +13,7 @@ import { AssignmentDetail } from '../employee/entities/assignment-detail.entity'
 import { Office } from '../common/entities/office.entity';
 import { District } from '../common/entities/district.entity';
 import { CategoryMarks } from '../common/entities/category-marks.entity';
+import { diffNepaliYMDWithTotalDays } from '../common/utils/nepali-date.utils';
 
 @Injectable()
 export class ApplicantService {
@@ -267,6 +268,48 @@ export class ApplicantService {
             return [segments];
         })();
 
+        // Filter absents/leaves within the seniority window
+        const normalizeBs = (v?: string) => (v || '').replace(/\//g, '-');
+        const isValidBs = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v);
+        const seniorityRange = (() => {
+            const flat = Array.isArray(seniorityDetails) ? (seniorityDetails as any[]).flat() : [];
+            const valid = flat
+                .map((seg: any) => ({
+                    start: normalizeBs(seg?.startDateBS),
+                    end: normalizeBs(seg?.endDateBS)
+                }))
+                .filter(seg => isValidBs(seg.start) && isValidBs(seg.end));
+            if (!valid.length) return null;
+            let start = valid[0].start;
+            let end = valid[0].end;
+            for (const seg of valid) {
+                if (seg.start < start) start = seg.start;
+                if (seg.end > end) end = seg.end;
+            }
+            return { start, end };
+        })();
+
+        const filterDatedRecords = async (records: any[]) => {
+            if (!seniorityRange) return records;
+            const filtered: any[] = [];
+            for (const rec of records as any[]) {
+                const from = normalizeBs(rec.fromDateBS);
+                const to = normalizeBs(rec.toDateBS || rec.fromDateBS);
+                if (!isValidBs(from) || !isValidBs(to)) continue;
+                const start = from <= to ? from : to;
+                const end = to >= from ? to : from;
+                if (end < seniorityRange.start || start > seniorityRange.end) continue;
+                const clampedStart = start < seniorityRange.start ? seniorityRange.start : start;
+                const clampedEnd = end > seniorityRange.end ? seniorityRange.end : end;
+                const { years, months, days, totalNumDays } = await diffNepaliYMDWithTotalDays(clampedStart, clampedEnd);
+                filtered.push({ ...rec, fromDateBS: clampedStart, toDateBS: clampedEnd, years, months, days, totalNumDays });
+            }
+            return filtered;
+        };
+
+        const filteredAbsents = await filterDatedRecords(normAbsents);
+        const filteredLeaves = await filterDatedRecords(normLeaves);
+
         const response: ApplicantCompleteDetailsDto = {
             employeeId: details.employeeId,
             name: details.name,
@@ -276,8 +319,8 @@ export class ApplicantService {
             dob: details.dob,
             group: details.group,
             assignments: assignments as any,
-            absents: normAbsents as any,
-            leaves: normLeaves as any,
+            absents: filteredAbsents as any,
+            leaves: filteredLeaves as any,
             rewardsPunishments: normRps as any,
             seniorityDetails,
             // Extras from vacancy

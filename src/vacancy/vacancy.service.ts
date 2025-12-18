@@ -155,6 +155,11 @@ export class VacancyService {
             });
         }
 
+        // Expose bigyapan end date in BS for client convenience
+        vacancy.bigyapanEndDateBS = vacancy.bigyapanEndDate
+            ? await formatBS(new Date(vacancy.bigyapanEndDate as any))
+            : undefined;
+
         return vacancy;
     }
 

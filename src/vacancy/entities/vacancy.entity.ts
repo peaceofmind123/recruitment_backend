@@ -91,4 +91,8 @@ export class Vacancy {
     @IsOptional()
     @Column({ type: 'date', nullable: true })
     bigyapanEndDate: Date;
+
+    @ApiProperty({ description: 'Bigyapan end date (BS)', required: false, readOnly: true })
+    @IsOptional()
+    bigyapanEndDateBS?: string;
 } 

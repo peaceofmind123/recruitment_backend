@@ -172,13 +172,32 @@ export class VacancyService {
                     geographicalMarks = 0;
                 }
 
+                const educationMarks = typeof applicant.educationMarks === 'number'
+                    ? applicant.educationMarks
+                    : (Number(applicant.educationMarks) || 0);
+                const seniorityMarks = typeof applicant.seniorityMarks === 'number'
+                    ? applicant.seniorityMarks
+                    : (Number(applicant.seniorityMarks) || 0);
+                const totalMarks = seniorityMarks + (geographicalMarks || 0) + educationMarks;
+
                 return {
                     ...applicant,
                     meetsMinimumQualification,
                     meetsAdditionalQualification,
-                    geographicalMarks
+                    geographicalMarks,
+                    educationMarks,
+                    seniorityMarks,
+                    totalMarks
                 };
             }));
+
+            // Sort applicants by totalMarks desc, then employeeId asc for stability
+            vacancy.applicants = vacancy.applicants.sort((a: any, b: any) => {
+                const totalA = typeof a.totalMarks === 'number' ? a.totalMarks : (Number(a.totalMarks) || 0);
+                const totalB = typeof b.totalMarks === 'number' ? b.totalMarks : (Number(b.totalMarks) || 0);
+                if (totalB !== totalA) return totalB - totalA;
+                return (a.employeeId || 0) - (b.employeeId || 0);
+            });
         }
 
         return vacancy;

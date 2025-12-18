@@ -175,16 +175,18 @@ export class VacancyService {
                 const educationMarks = typeof applicant.educationMarks === 'number'
                     ? applicant.educationMarks
                     : (Number(applicant.educationMarks) || 0);
-                const seniorityMarks = typeof applicant.seniorityMarks === 'number'
+                const seniorityRaw = typeof applicant.seniorityMarks === 'number'
                     ? applicant.seniorityMarks
                     : (Number(applicant.seniorityMarks) || 0);
-                const totalMarks = seniorityMarks + (geographicalMarks || 0) + educationMarks;
+                const seniorityMarks = Math.min(seniorityRaw, 30);
+                const geographicalCapped = Math.min(geographicalMarks ?? 0, 16);
+                const totalMarks = seniorityMarks + geographicalCapped + educationMarks;
 
                 return {
                     ...applicant,
                     meetsMinimumQualification,
                     meetsAdditionalQualification,
-                    geographicalMarks,
+                    geographicalMarks: geographicalCapped,
                     educationMarks,
                     seniorityMarks,
                     totalMarks

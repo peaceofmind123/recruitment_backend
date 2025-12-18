@@ -158,4 +158,20 @@ export class VacancyController {
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         return res.send(html);
     }
+
+    @Get('download-scorecards')
+    @ApiOperation({ summary: 'Download all applicant scorecards for a vacancy as a ZIP of HTML files' })
+    @ApiQuery({ name: 'bigyapanNo', type: String, required: true })
+    async downloadScorecards(
+        @Query('bigyapanNo') bigyapanNo: string,
+        @Res() res: Response
+    ) {
+        if (!bigyapanNo || !bigyapanNo.toString().trim()) {
+            throw new BadRequestException('Query parameter "bigyapanNo" is required');
+        }
+        const { buffer, fileName } = await this.vacancyService.downloadScorecards(bigyapanNo);
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        return res.send(buffer);
+    }
 } 

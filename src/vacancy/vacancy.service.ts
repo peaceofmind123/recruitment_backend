@@ -16,6 +16,8 @@ import { In } from 'typeorm';
 import { Qualification } from './entities/qualification.entity';
 import { EmployeeService } from '../employee/employee.service';
 import { diffNepaliYMDWithTotalDays, formatBS } from '../common/utils/nepali-date.utils';
+import { TemplateRendererService } from '../common/template-renderer.service';
+import { Sex } from '../employee/entities/employee.entity';
 const NepaliDate = require('nepali-datetime');
 
 interface ExcelRow {
@@ -38,6 +40,7 @@ export class VacancyService {
         @InjectRepository(Qualification)
         private qualificationRepository: Repository<Qualification>,
         private readonly employeeService: EmployeeService,
+        private readonly templateRenderer: TemplateRendererService,
     ) { }
 
     async create(createVacancyDto: CreateVacancyDto): Promise<Vacancy> {
@@ -378,6 +381,86 @@ export class VacancyService {
         await this.calculateSeniorityMarks(bigyapanNo);
 
         return savedVacancy;
+    }
+
+    async downloadScorecards(bigyapanNo: string): Promise<{ buffer: Buffer; fileName: string; }> {
+        const vacancy = await this.vacancyRepository.findOne({
+            where: { bigyapanNo },
+            relations: ['applicants']
+        });
+
+        if (!vacancy) {
+            throw new NotFoundException(`Vacancy with bigyapan number ${bigyapanNo} not found`);
+        }
+
+        if (!vacancy.applicants || vacancy.applicants.length === 0) {
+            throw new NotFoundException(`No applicants found for vacancy ${bigyapanNo}`);
+        }
+
+        const jszipMod = await import('jszip');
+        const JSZipCtor: any = (jszipMod as any).default || jszipMod;
+        const zip = new JSZipCtor();
+
+        for (const applicant of vacancy.applicants) {
+            const details = await this.applicantService.getScorecard(applicant.employeeId, bigyapanNo);
+
+            const base = await this.employeeService.getEmployeeById(applicant.employeeId);
+            const gender = base?.sex === Sex.M ? 'M' : (base?.sex === Sex.F ? 'F' : '');
+            const employee = {
+                employeeId: details.employeeId,
+                name: details.name,
+                level: details.level,
+                workingOffice: details.workingOffice,
+                position: details.position,
+                dob: details.dob,
+                group: details.group,
+                education: base?.education || '',
+                gender
+            } as any;
+
+            const seniorityTotalMarks =
+                Array.isArray(details.seniorityDetails)
+                    ? (details.seniorityDetails as any[]).flat().reduce((sum, seg: any) => {
+                        const v = typeof seg?.marks === 'number' ? seg.marks : Number(seg?.marks) || 0;
+                        return sum + v;
+                    }, 0)
+                    : 0;
+
+            const geographicalTotalMarks =
+                Array.isArray(details.assignments)
+                    ? (details.assignments as any[]).reduce((sum, seg: any) => {
+                        const v = typeof seg?.totalMarks === 'number' ? seg.totalMarks : Number(seg?.totalMarks) || 0;
+                        return sum + v;
+                    }, 0)
+                    : 0;
+
+            const combinedTotalMarks = seniorityTotalMarks + geographicalTotalMarks + (details.educationMarks || 0);
+
+            const html = this.templateRenderer.render('applicant-report', {
+                employee,
+                seniorityDetails: details.seniorityDetails,
+                absents: details.absents,
+                leaves: details.leaves,
+                assignments: details.assignments,
+                seniorityTotalMarks,
+                geographicalTotalMarks,
+                combinedTotalMarks,
+                endDateBS: details.bigyapanEndDateBS,
+                bigyapanNo,
+                appliedPosition: details.appliedPosition,
+                appliedLevel: details.appliedLevel,
+                educationMarks: details.educationMarks,
+                minQualifications: details.minQualifications,
+                additionalQualifications: details.additionalQualifications
+            });
+
+            zip.file(`${applicant.employeeId}.html`, html);
+        }
+
+        const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+        const fileName = `scorecards-${bigyapanNo.replace('/', '-')}.zip`;
+
+        return { buffer, fileName };
     }
 
     async getApprovedApplicantList(bigyapanNo: string): Promise<{ filePath: string; fileName: string }> {

@@ -133,9 +133,15 @@ export class VacancyService {
             throw new NotFoundException(`Vacancy with fiscal year ${fiscalYear} and bigyapan number ${bigyapanNo} not found`);
         }
 
-        // Transform applicants to include qualification match fields
+        // Expose bigyapan end date in BS for client convenience
+        const bigyapanEndDateBS = vacancy.bigyapanEndDate
+            ? await formatBS(new Date(vacancy.bigyapanEndDate as any))
+            : undefined;
+        vacancy.bigyapanEndDateBS = bigyapanEndDateBS;
+
+        // Transform applicants to include qualification match fields and geographical marks
         if (vacancy.applicants) {
-            vacancy.applicants = vacancy.applicants.map(applicant => {
+            vacancy.applicants = await Promise.all(vacancy.applicants.map(async applicant => {
                 const employeeQualifications = applicant.employee?.qualifications || [];
                 const employeeQualificationNames = employeeQualifications.map(q => q.qualification);
 
@@ -147,18 +153,33 @@ export class VacancyService {
                     addQual => employeeQualificationNames.includes(addQual.qualification)
                 );
 
+                // Calculate geographical marks using the same logic as getScorecard/getCompleteDetails
+                let geographicalMarks: number | null = null;
+                if (bigyapanEndDateBS) {
+                    const assignments = await this.employeeService.getEmployeeAssignmentsWithExtras(
+                        applicant.employeeId,
+                        applicant.employee?.level ?? undefined,
+                        undefined,
+                        bigyapanEndDateBS
+                    );
+                    geographicalMarks = Array.isArray(assignments)
+                        ? (assignments as any[]).reduce((sum, seg: any) => {
+                            const v = typeof seg?.totalMarks === 'number' ? seg.totalMarks : Number(seg?.totalMarks) || 0;
+                            return sum + v;
+                        }, 0)
+                        : 0;
+                } else {
+                    geographicalMarks = 0;
+                }
+
                 return {
                     ...applicant,
                     meetsMinimumQualification,
-                    meetsAdditionalQualification
+                    meetsAdditionalQualification,
+                    geographicalMarks
                 };
-            });
+            }));
         }
-
-        // Expose bigyapan end date in BS for client convenience
-        vacancy.bigyapanEndDateBS = vacancy.bigyapanEndDate
-            ? await formatBS(new Date(vacancy.bigyapanEndDate as any))
-            : undefined;
 
         return vacancy;
     }

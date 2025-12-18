@@ -198,7 +198,7 @@ export class ApplicantController {
                 }, 0)
                 : 0;
 
-        const combinedTotalMarks = seniorityTotalMarks + geographicalTotalMarks + (details.educationMarks || 0);
+        const combinedTotalMarks = Math.min(seniorityTotalMarks, 30) + Math.min(geographicalTotalMarks, 16) + (details.educationMarks || 0);
 
         const html = this.templateRenderer.render('applicant-report', {
             employee,

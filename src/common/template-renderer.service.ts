@@ -26,6 +26,24 @@ export class TemplateRendererService {
             return numbers.reduce((product: number, current: number) => product * current, 1);
         });
 
+        Handlebars.registerHelper('min', (...args: any[]) => {
+            const lastArg = args[args.length - 1];
+            const values = lastArg && typeof lastArg === 'object' && lastArg !== null && 'hash' in lastArg
+                ? args.slice(0, -1)
+                : args;
+            if (values.length < 2) {
+                throw new Error('min helper requires at least two numeric arguments');
+            }
+            const numbers = values.map((value: any) => {
+                const num = typeof value === 'number' ? value : Number(value);
+                if (Number.isNaN(num)) {
+                    throw new Error('min helper accepts only numeric arguments');
+                }
+                return num;
+            });
+            return Math.min(...numbers);
+        });
+
 		Handlebars.registerHelper('toFixed', (...args: any[]) => {
 			const lastArg = args[args.length - 1];
 			const values = lastArg && typeof lastArg === 'object' && lastArg !== null && 'hash' in lastArg

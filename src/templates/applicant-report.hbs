@@ -172,9 +172,9 @@
         </tr>
 
         <tr class="no-border-row">
-          <td>सेवा,समूह,उपसमूह</td>
+          <td>सेवा,समूह,उपसमूह:</td>
           <td>{{employee.group}}</td>
-          <td colspan="2">जन्म मिति (बि. स.)</td>
+          <td colspan="2" style="font-weight: lighter;">जन्म मिति (बि. स.)</td>
           <td>{{employee.dob}}</td>
           <td colspan="6"></td>
           <td>पद र तह :</td>
@@ -186,8 +186,8 @@
           <td colspan="14"></td>
         </tr>
         <tr class="no-border-row">
-          <td colspan="8">अंक गणनाको अवधि :</td>
-          <td colspan="7">बि.सं. {{endDateBS}} सम्म |</td>
+          <td colspan="6" style="text-align:right;">अंक गणनाको अवधि :</td>
+          <td colspan="9" style="text-align:left;">बि.सं. {{endDateBS}} सम्म |</td>
         </tr>
         <tr>
           <td colspan="3">१. जेष्ठता विवरण</td>
@@ -228,7 +228,7 @@
           <td>{{multiplyFixed 0.3125 months 2}}</td>
           <td>{{multiplyFixed 0.01027 days 2}}</td>
           <td>{{toFixed marks 2}}</td>
-          <td>{{toFixed marks 2}}</td>
+          <td>{{min (toFixed marks 2) 30}}</td>
           <td>{{remarks}}</td>
         </tr>
         {{/each}}
@@ -236,7 +236,7 @@
         {{/if}}
         <tr>
           <td colspan="13">जम्मा अंक</td>
-          <td colspan="2">{{toFixed seniorityTotalMarks 4}}</td>
+          <td colspan="2">{{min (toFixed seniorityTotalMarks 4) 30.00}}</td>
         </tr>
         <tr>
           <td colspan="15"></td>
@@ -326,8 +326,9 @@
         {{/each}}
         {{/if}}
         <tr>
-          <td colspan="13">जम्मा अंक</td>
-          <td colspan="2">{{toFixed geographicalTotalMarks 4}}</td>
+          <td colspan="12">जम्मा अंक</td>
+          <td>{{toFixed geographicalTotalMarks 4}}</td>
+          <td colspan="2">{{min (toFixed geographicalTotalMarks 4) 16}}</td>
         </tr>
         <tr>
           <td colspan="15"></td>
@@ -344,8 +345,8 @@
           <td colspan="6">कार्यालयको रेकर्डबाट देखिएको शैक्षिक योग्यता</td>
           <td colspan="5">{{employee.education}}</td>
           <td></td>
-          <td></td>
           <td>{{toFixed educationMarks 2}}</td>
+          <td><strong>{{toFixed educationMarks 2}}</strong></td>
           <td></td>
         </tr>
         <tr>
@@ -356,8 +357,12 @@
             {{else}}-{{/if}}
           </td>
           <td></td>
-          <td></td>
-          <td></td>
+          <td>{{#if minQualifications}}
+            9.00
+            {{/if}}</td>
+          <td>{{#if minQualifications}}
+            9.00
+            {{/if}}</td>
           <td></td>
         </tr>
         <tr>
@@ -368,8 +373,12 @@
             {{else}}-{{/if}}
           </td>
           <td></td>
-          <td></td>
-          <td></td>
+          <td>{{#if additionalQualifications}}
+            3.00
+            {{/if}}</td>
+          <td>{{#if additionalQualifications}}
+            3.00
+            {{/if}}</td>
           <td></td>
         </tr>
         <tr>
@@ -392,11 +401,11 @@
         </tr>
         <tr>
           <td colspan="4">१. जेष्ठता प्राप्तांक:</td>
-          <td>{{toFixed seniorityTotalMarks 4}}</td>
+          <td>{{min (toFixed seniorityTotalMarks 4) 30}}</td>
         </tr>
         <tr>
           <td colspan="4">२. भौगोलिक क्षेत्रको प्राप्तांक:</td>
-          <td>{{toFixed geographicalTotalMarks 4}}</td>
+          <td>{{min (toFixed geographicalTotalMarks 4) 16}}</td>
           <td class="no-right-border"></td>
           <td class="no-right-border">तयार गर्ने: </td>
           <td class="no-right-border" colspan="3"></td>
@@ -407,7 +416,7 @@
         </tr>
         <tr>
           <td colspan="4">३. शैक्षिक योग्यता बापतको अंक:</td>
-          <td>{{toFixed educationMarks 4}}</td>
+          <td>{{toFixed educationMarks 2}}</td>
           <td class="no-right-border"></td>
           <td class="no-right-border">नाम</td>
           <td class="no-right-border" colspan="3"></td>
@@ -418,7 +427,7 @@
         </tr>
         <tr>
           <td colspan="4">४. तालिम बापतको अंक:</td>
-          <td>0.0000</td>
+          <td>0.00</td>
           <td class="no-right-border"></td>
           <td class="no-right-border">दस्तखत</td>
           <td class="no-right-border" colspan="3"></td>

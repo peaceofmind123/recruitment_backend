@@ -495,7 +495,7 @@ export class VacancyService {
         }
 
         const rows = await Promise.all(applicants.map(async a => {
-            const seniority = typeof a.seniorityMarks === 'number' ? a.seniorityMarks : (Number(a.seniorityMarks) || 0);
+            const seniorityRaw = typeof a.seniorityMarks === 'number' ? a.seniorityMarks : (Number(a.seniorityMarks) || 0);
             // Compute geographical marks from assignments (same approach as applicant-report)
             const assignments = await this.employeeService.getEmployeeAssignmentsWithExtras(
                 a.employeeId,
@@ -503,12 +503,14 @@ export class VacancyService {
                 undefined,
                 endDateBS
             );
-            const geographical = Array.isArray(assignments)
+            const geographicalRaw = Array.isArray(assignments)
                 ? (assignments as any[]).reduce((sum, seg: any) => {
                     const v = typeof seg?.totalMarks === 'number' ? seg.totalMarks : Number(seg?.totalMarks) || 0;
                     return sum + v;
                 }, 0)
                 : 0;
+            const seniority = Math.min(seniorityRaw, 30);
+            const geographical = Math.min(geographicalRaw, 16);
             const education = typeof a.educationMarks === 'number' ? a.educationMarks : (Number(a.educationMarks) || 0);
             const training = 0;
             const total = seniority + geographical + education + training;
@@ -523,18 +525,16 @@ export class VacancyService {
             };
         }));
 
-        // Sort by total descending and compute competition ranking (1,2,2,4)
+        // Sort by total descending and compute dense ranking (1,1,2,3)
         rows.sort((x, y) => (y.totalMarks - x.totalMarks) || (x.employeeId - y.employeeId));
         let lastTotal = Number.NEGATIVE_INFINITY;
-        let lastRank = 0;
-        let index = 0;
+        let currentRank = 0;
         const ranked = rows.map(r => {
-            index += 1;
             if (r.totalMarks !== lastTotal) {
-                lastRank = index;
+                currentRank += 1;
                 lastTotal = r.totalMarks;
             }
-            return { ...r, rank: lastRank };
+            return { ...r, rank: currentRank };
         });
 
         return { bigyapanNo, applicants: ranked };

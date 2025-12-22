@@ -164,13 +164,14 @@ export class VacancyController {
     @ApiQuery({ name: 'bigyapanNo', type: String, required: true })
     async downloadScorecards(
         @Query('bigyapanNo') bigyapanNo: string,
+        @Query('type') type: string,
         @Res() res: Response
     ) {
         if (!bigyapanNo || !bigyapanNo.toString().trim()) {
             throw new BadRequestException('Query parameter "bigyapanNo" is required');
         }
-        const { buffer, fileName } = await this.vacancyService.downloadScorecards(bigyapanNo);
-        res.setHeader('Content-Type', 'application/zip');
+        const { buffer, fileName, contentType } = await this.vacancyService.downloadScorecards(bigyapanNo, type);
+        res.setHeader('Content-Type', contentType);
         res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
         return res.send(buffer);
     }

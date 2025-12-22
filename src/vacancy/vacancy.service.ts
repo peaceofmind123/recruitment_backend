@@ -383,7 +383,7 @@ export class VacancyService {
         return savedVacancy;
     }
 
-    async downloadScorecards(bigyapanNo: string): Promise<{ buffer: Buffer; fileName: string; }> {
+    async downloadScorecards(bigyapanNo: string, type?: string): Promise<{ buffer: Buffer; fileName: string; contentType: string; }> {
         const vacancy = await this.vacancyRepository.findOne({
             where: { bigyapanNo },
             relations: ['applicants']
@@ -397,9 +397,45 @@ export class VacancyService {
             throw new NotFoundException(`No applicants found for vacancy ${bigyapanNo}`);
         }
 
-        const jszipMod = await import('jszip');
-        const JSZipCtor: any = (jszipMod as any).default || jszipMod;
-        const zip = new JSZipCtor();
+        const lowerType = (type || '').toLowerCase();
+        const shouldExportExcel = lowerType === 'excel';
+
+        // If Excel: accumulate sheets; else: build ZIP of HTML files
+        const jszipMod = shouldExportExcel ? null : await import('jszip');
+        const JSZipCtor: any = shouldExportExcel ? null : ((jszipMod as any).default || jszipMod);
+        const zip = shouldExportExcel ? null : new JSZipCtor();
+
+        const workbook = shouldExportExcel ? XLSX.utils.book_new() : null;
+        const sanitizeSheetName = (name: string) => {
+            const cleaned = (name || '').replace(/[\\/?*:^\[\]]/g, ' ').trim() || 'Sheet';
+            return cleaned.length > 31 ? cleaned.slice(0, 31) : cleaned;
+        };
+        const extractFirstTable = (html: string) => {
+            const match = html.match(/<table[^>]*>[\s\S]*?<\/table>/i);
+            return match ? match[0] : html;
+        };
+        const fixSheetRef = (sheet: XLSX.WorkSheet) => {
+            if (!sheet) return;
+            const ref = (sheet as any)['!ref'];
+            try {
+                if (ref) XLSX.utils.decode_range(ref);
+                return;
+            } catch { /* fall through to recompute */ }
+            const keys = Object.keys(sheet).filter(k => k[0] !== '!');
+            if (!keys.length) {
+                (sheet as any)['!ref'] = 'A1';
+                return;
+            }
+            let minR = Infinity, minC = Infinity, maxR = 0, maxC = 0;
+            for (const k of keys) {
+                const { r, c } = XLSX.utils.decode_cell(k);
+                minR = Math.min(minR, r);
+                minC = Math.min(minC, c);
+                maxR = Math.max(maxR, r);
+                maxC = Math.max(maxC, c);
+            }
+            (sheet as any)['!ref'] = XLSX.utils.encode_range({ s: { r: minR, c: minC }, e: { r: maxR, c: maxC } });
+        };
 
         for (const applicant of vacancy.applicants) {
             const details = await this.applicantService.getScorecard(applicant.employeeId, bigyapanNo);
@@ -454,13 +490,32 @@ export class VacancyService {
                 additionalQualifications: details.additionalQualifications
             });
 
-            zip.file(`${applicant.employeeId}.html`, html);
+            if (shouldExportExcel && workbook) {
+                const tableHtml = extractFirstTable(html);
+                const sheetWorkbook = XLSX.read(tableHtml, { type: 'string' });
+                const firstSheetName = sheetWorkbook.SheetNames[0];
+                const sheet = sheetWorkbook.Sheets[firstSheetName];
+                const targetName = sanitizeSheetName(`${applicant.employeeId}`);
+                // Rebuild sheet from parsed rows to normalize ranges and avoid invalid refs
+                const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, blankrows: true }) as any[][];
+                const normalizedSheet = XLSX.utils.aoa_to_sheet(aoa);
+                fixSheetRef(normalizedSheet);
+                XLSX.utils.book_append_sheet(workbook, normalizedSheet, targetName);
+            } else if (zip) {
+                zip.file(`${applicant.employeeId}.html`, html);
+            }
         }
 
-        const buffer = await zip.generateAsync({ type: 'nodebuffer' });
-        const fileName = `scorecards-${bigyapanNo.replace('/', '-')}.zip`;
+        if (shouldExportExcel && workbook) {
+            const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+            const fileName = `scorecards-${bigyapanNo.replace('/', '-')}.xlsx`;
+            return { buffer, fileName, contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' };
+        }
 
-        return { buffer, fileName };
+        const buffer = await zip!.generateAsync({ type: 'nodebuffer' });
+        const fileName = `scorecards-${bigyapanNo.replace('/', '-')}.zip`;
+        return { buffer, fileName, contentType: 'application/zip' };
+
     }
 
     async getApprovedApplicantList(bigyapanNo: string): Promise<{ filePath: string; fileName: string }> {

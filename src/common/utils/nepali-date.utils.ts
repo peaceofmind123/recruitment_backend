@@ -20,7 +20,7 @@ export async function diffNepaliYMD(from: Date | string, to: Date | string = new
 
     let years = end.getYear() - start.getYear();
     let months = end.getMonth() - start.getMonth();
-    let days = end.getDate() - start.getDate();
+    let days = end.getDate() - start.getDate() + 1;
 
 
     if (days < 0) {
@@ -62,7 +62,7 @@ export async function diffNepaliYMDWithTotalDays(from: Date | string, to: Date |
     const end = typeof endInput === 'string' ? new NepaliDate(endInput) : new NepaliDate(endInput);
 
     const ymd = await diffNepaliYMD(startInput, endInput);
-    const totalNumDays = end.diff(start, 'day');
+    const totalNumDays = end.addDays(1).diff(start, 'day');
 
     return { ...ymd, totalNumDays };
 }

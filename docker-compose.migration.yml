@@ -20,6 +20,7 @@ services:
       - ./:/app
     environment:
       NODE_ENV: production
+      NPM_CONFIG_PRODUCTION: "false" # install dev deps (nest CLI) for build/migrations
       DB_HOST: db
       DB_PORT: 5432
       DB_USERNAME: ${DB_USERNAME:-postgres}
@@ -32,7 +33,7 @@ services:
       sh -c "
         echo 'Waiting for database...' &&
         until nc -z db 5432; do sleep 2; done &&
-        npm ci &&
+        npm ci --include=dev &&
         npm run build &&
         npx typeorm migration:run -d dist/typeorm.migration.config.js &&
         node dist/main
@@ -40,4 +41,5 @@ services:
 
 volumes:
   pgdata:
+
 

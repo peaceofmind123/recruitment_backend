@@ -1,0 +1,43 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_DATABASE:-hr_recruitment}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  app:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./:/app
+    environment:
+      NODE_ENV: production
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_DATABASE: ${DB_DATABASE:-hr_recruitment}
+      TYPEORM_LOGGING: "false"
+    depends_on:
+      - db
+    command: >
+      sh -c "
+        echo 'Waiting for database...' &&
+        until nc -z db 5432; do sleep 2; done &&
+        npm ci &&
+        npm run build &&
+        npx typeorm migration:run -d dist/typeorm.migration.config.js &&
+        node dist/main
+      "
+
+volumes:
+  pgdata:
+

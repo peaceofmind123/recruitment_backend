@@ -4,12 +4,14 @@ services:
   db:
     image: postgres:16
     restart: always
+    env_file:
+      - .env.production
     environment:
-      POSTGRES_USER: ${DB_USERNAME:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: ${DB_DATABASE:-hr_recruitment}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_DATABASE}
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "${DB_PORT}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
 
@@ -18,17 +20,18 @@ services:
     working_dir: /app
     volumes:
       - ./:/app
+    env_file:
+      - .env.production
     environment:
       NODE_ENV: production
       NPM_CONFIG_PRODUCTION: "false" # install dev deps (nest CLI) for build/migrations
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_USERNAME: ${DB_USERNAME:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-postgres}
-      DB_DATABASE: ${DB_DATABASE:-hr_recruitment}
+      DB_HOST: db # override host to the service name
+      DB_PORT: 5432 # override port to container port
       TYPEORM_LOGGING: "false"
     depends_on:
       - db
+    ports:
+      - "${PORT}:3500"
     command: >
       sh -c "
         echo 'Waiting for database...' &&

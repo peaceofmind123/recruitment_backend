@@ -73,16 +73,17 @@ export class EmployeeService {
     private parseDate(dateStr: string): Date | undefined {
         if (!dateStr) return undefined;
 
-        // Try parsing as Excel serial (BS) using the shared converter that handles the 1900 leap-year bug
+        // Try parsing as Excel serial (AD) with the 1900 leap-year correction
         const excelDate = Number(dateStr);
         if (!isNaN(excelDate)) {
-            const bsDate = this.convertExcelDateToBS(excelDate);
-            if (bsDate) {
-                const nd = this.parseBSDate(bsDate.replace(/-/g, '/'));
-                if (nd?.getDateObject) {
-                    return nd.getDateObject();
-                }
+            const excelNum = excelDate;
+            let adjustedDays = excelNum - 1; // Excel day 1 is 1900-01-01
+            if (excelNum > 59) {
+                // Excel incorrectly counts 1900-02-29; subtract one more day for dates after that
+                adjustedDays -= 1;
             }
+            const excelEpoch = new Date(1900, 0, 1);
+            return new Date(excelEpoch.getTime() + adjustedDays * 24 * 60 * 60 * 1000);
         }
 
         // Try parsing as regular date string (AD)

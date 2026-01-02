@@ -35,8 +35,8 @@ services:
         until nc -z db 5432; do sleep 2; done &&
         npm ci --include=dev &&
         npm run build &&
-        npx typeorm migration:run -d dist/typeorm.migration.config.js &&
-        node dist/main
+        npx typeorm-ts-node-commonjs migration:run -d typeorm.migration.config.ts &&
+        node dist/main.js
       "
 
 volumes:

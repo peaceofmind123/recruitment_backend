@@ -16,10 +16,11 @@ services:
       - pgdata:/var/lib/postgresql/data
 
   app:
-    image: node:20-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    image: hr-recruitment-app:latest
     working_dir: /app
-    volumes:
-      - ./:/app
     env_file:
       - .env.production
     environment:
@@ -36,16 +37,11 @@ services:
       sh -c "
         echo 'Waiting for database...' &&
         until nc -z db 5432; do sleep 2; done &&
-        npm ci --include=dev &&
-        npm run build &&
         npx typeorm-ts-node-commonjs migration:run -d typeorm.migration.config.ts &&
         if [ -f dist/main.js ]; then
           node dist/main.js;
         elif [ -f dist/src/main.js ]; then
           node dist/src/main.js;
-        elif [ -f src/main.ts ]; then
-          echo 'dist main not found; starting with ts-node'; 
-          node -r ts-node/register -r tsconfig-paths/register src/main.ts;
         else
           echo 'main.js not found in dist'; ls -R dist; exit 1;
         fi

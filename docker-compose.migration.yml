@@ -36,7 +36,13 @@ services:
         npm ci --include=dev &&
         npm run build &&
         npx typeorm-ts-node-commonjs migration:run -d typeorm.migration.config.ts &&
-        node dist/main.js
+        if [ -f dist/main.js ]; then
+          node dist/main.js;
+        elif [ -f dist/src/main.js ]; then
+          node dist/src/main.js;
+        else
+          echo 'main.js not found in dist'; ls -R dist; exit 1;
+        fi
       "
 
 volumes:

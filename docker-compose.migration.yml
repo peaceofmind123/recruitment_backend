@@ -40,6 +40,9 @@ services:
           node dist/main.js;
         elif [ -f dist/src/main.js ]; then
           node dist/src/main.js;
+        elif [ -f src/main.ts ]; then
+          echo 'dist main not found; starting with ts-node'; 
+          node -r ts-node/register -r tsconfig-paths/register src/main.ts;
         else
           echo 'main.js not found in dist'; ls -R dist; exit 1;
         fi

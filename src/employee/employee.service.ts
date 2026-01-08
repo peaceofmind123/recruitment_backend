@@ -73,20 +73,23 @@ export class EmployeeService {
     private parseDate(dateStr: string): Date | undefined {
         if (!dateStr) return undefined;
 
-        // Try parsing as Excel serial (AD) with the 1900 leap-year correction
-        const excelDate = Number(dateStr);
-        if (!isNaN(excelDate)) {
-            const excelNum = excelDate;
-            let adjustedDays = excelNum - 1; // Excel day 1 is 1900-01-01
-            if (excelNum > 59) {
-                // Excel incorrectly counts 1900-02-29; subtract one more day for dates after that
-                adjustedDays -= 1;
+        // Excel serial number -> Date using XLSX SSF parser (handles 1900/1904 systems)
+        const excelNum = Number(dateStr);
+        if (!isNaN(excelNum)) {
+            const parsed = XLSX.SSF.parse_date_code(excelNum);
+            if (parsed && typeof parsed.y === 'number' && typeof parsed.m === 'number' && typeof parsed.d === 'number') {
+                return new Date(
+                    parsed.y,
+                    (parsed.m || 1) - 1,
+                    parsed.d || 1,
+                    parsed.H || 0,
+                    parsed.M || 0,
+                    parsed.S || 0
+                );
             }
-            const excelEpoch = new Date(1900, 0, 1);
-            return new Date(excelEpoch.getTime() + adjustedDays * 24 * 60 * 60 * 1000);
         }
 
-        // Try parsing as regular date string (AD)
+        // Fallback: regular Date parse (AD)
         const date = new Date(dateStr);
         if (!isNaN(date.getTime())) {
             return date;

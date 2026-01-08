@@ -1,6 +1,7 @@
-import { Controller, Get, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { Body, Controller, Get, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiQuery, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { PostDetailService } from './post-detail.service';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('post-detail')
 @Controller('post-detail')
@@ -54,5 +55,33 @@ export class PostDetailController {
         @Query('subgroup') subgroup: string
     ) {
         return this.postDetailService.getPositions(Number(level), service, group, subgroup);
+    }
+
+    @Post('upload')
+    @ApiOperation({ summary: 'Upload post detail Excel file' })
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                file: {
+                    type: 'string',
+                    format: 'binary',
+                },
+            },
+        },
+    })
+    @UseInterceptors(FileInterceptor('file', {
+        fileFilter: (req, file, cb) => {
+            if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                file.mimetype === 'application/vnd.ms-excel') {
+                cb(null, true);
+            } else {
+                cb(new Error('Only Excel files are allowed!'), false);
+            }
+        },
+    }))
+    async uploadPostDetail(@UploadedFile() file: Express.Multer.File) {
+        return this.postDetailService.importFromExcel(file);
     }
 } 

@@ -12,8 +12,14 @@ export class PostDetailService {
         private postDetailRepository: Repository<PostDetail>,
     ) { }
 
-    async importFromExcel(filePath: string): Promise<void> {
-        const workbook = XLSX.readFile(filePath);
+    async importFromExcel(file: string | Express.Multer.File): Promise<PostDetail[]> {
+        let workbook: XLSX.WorkBook;
+        if (typeof file === 'string') {
+            workbook = XLSX.readFile(file);
+        }
+        else {
+            workbook = XLSX.read(file, { type: 'buffer' });
+        }
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json<any>(worksheet, { header: 1 });
         const [header, ...data] = rows;
@@ -29,6 +35,9 @@ export class PostDetailService {
                 position: position || '',
             });
         }
+
+        // Return all entries after import (used by API and CLI)
+        return await this.postDetailRepository.find();
     }
 
     async getLevels(): Promise<number[]> {

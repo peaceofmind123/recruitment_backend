@@ -498,6 +498,13 @@ export class EmployeeService {
             }
         }
 
+        // Flag segments with insufficient present days based on break date
+        for (const seg of flattened as any[]) {
+            const threshold = seg.beforeBreak === true ? 90 : 233;
+            const presentDays: number = typeof seg.presentDays === 'number' ? seg.presentDays : 0;
+            seg.isPresentDaysLessThanRequired = presentDays < threshold;
+        }
+
         // Compute totalMarks for each segment based on marks-calculation.md
         for (let i = 0; i < flattened.length; i++) {
             const seg = flattened[i] as any;
